@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+dist/
+.mypy_cache/
+.ruff_cache/
+
+# Data & runs
+wandb/
+outputs/
+*.mp4
+*.pkl
+
+# Env
+.env
+
+# OS
+.DS_Store
