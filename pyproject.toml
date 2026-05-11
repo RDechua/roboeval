@@ -86,8 +86,10 @@ select = [
     "BLE",           # blind-except
 ]
 ignore = [
-    "D203",  # one-blank-line-before-class (conflicts with D211)
-    "D213",  # multi-line-summary-second-line (conflicts with D212)
+    "D203",   # one-blank-line-before-class (conflicts with D211)
+    "D213",   # multi-line-summary-second-line (conflicts with D212)
+    "ANN101", # type annotation for self — deprecated in modern Python typing
+    "ANN102", # type annotation for cls — deprecated in modern Python typing
 ]
 
 [tool.ruff.lint.pydocstyle]
@@ -95,6 +97,8 @@ convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D", "ANN"]
+"roboeval/policies/act_loader.py" = ["ANN401"]   # lerobot internals untyped
+"roboeval/evaluation/logger.py" = ["ANN401"]    # wandb internals untyped
 
 # ---------------------------------------------------------------------------
 # Mypy
@@ -132,5 +136,8 @@ ignore_missing_imports = true
 # ---------------------------------------------------------------------------
 [tool.pytest.ini_options]
 minversion = "8.0"
-addopts = "-ra -q --strict-markers"
+addopts = "-ra -q --strict-markers -m 'not slow'"
 testpaths = ["tests"]
+markers = [
+    "slow: requires lerobot/mujoco/checkpoint downloads; skip in CI (run locally with `pytest -m slow`).",
+]
