@@ -1,0 +1,28 @@
+# Full nominal evaluation: 3 seed groups x 50 rollouts = 150 rollouts.
+# Estimated wall time on M1 CPU: 2.5-4 hours (overnight run).
+# PRD Section 10.2 Week 2 target; PRD Section 6.3 reporting convention.
+
+policy:
+  repo_id: lerobot/act_aloha_sim_transfer_cube_human
+  device: mps   # falls back to CPU automatically if MPS not available
+
+env:
+  task: AlohaTransferCube-v0
+  episode_length: 400   # PRD Section 7.2
+
+eval:
+  seeds: [0, 1, 2]
+  n_rollouts_per_seed: 50
+  max_steps: 400
+
+success:
+  z_threshold_m: 0.05
+  xy_tolerance_m: 0.05
+  dwell_steps: 5
+  target_xy: [0.0, 0.0]
+
+wandb:
+  project: roboeval
+  name_prefix: act_nominal
+  tags: [week2, baseline, act, nominal]
+  mode: online
