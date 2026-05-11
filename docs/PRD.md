@@ -67,7 +67,7 @@ RoboEval is designed to fill all three gaps simultaneously and produce artifacts
 ## __3\.1  Goals__
 
 1. Build and open\-source a reproducible policy evaluation harness runnable on Apple M1 \(8 GB RAM\) with no GPU required for evaluation\.
-2. Benchmark at least 3 pretrained manipulation policies from the LeRobot model zoo under baseline and perturbed conditions\.
+2. Benchmark Policy A \(`lerobot/act_aloha_sim_transfer_cube_human`\) from the LeRobot model zoo under baseline and perturbed conditions\. Build the harness as policy\-agnostic so additional policies \(e\.g\. a community\-trained Diffusion Policy\) can be added in v1\.1 via a single config flag\.
 3. Define, operationalise, and classify at least 6 failure mode categories across ≥150 labelled rollouts\.
 4. Train a residual PPO policy on top of the highest\-frequency failure mode and report ΔTSR \(task success rate improvement\) with ablations\.
 5. Produce a public demo video, interactive Plotly/Dash dashboard, arXiv\-style PDF writeup, and MkDocs documentation site\.
@@ -82,6 +82,8 @@ The following are explicitly out of scope for v1\.0 to protect timeline:
 - CUDA / GPU infrastructure — M1 MPS and Colab Pro overflow handle all compute needs
 - Novel algorithm contributions — this is an empirical study, not a methods paper
 - Comparison to proprietary models \(π0, RT\-2, Helix\) — no public checkpoints available
+- __Cross\-policy comparison in v1\.0 __— no sim\-trained Diffusion Policy checkpoint exists publicly for ALOHA Transfer Cube \(see Section 6\.1\)\. v1\.0 is single\-policy \(ACT\); cross\-policy comparison and the multi\-policy perturbation grid are deferred to v1\.1 as a stretch goal contingent on training Diffusion Policy from scratch on Colab or the appearance of a community checkpoint\.
+- __Multi\-policy perturbation grid __— for the same reason, the perturbation suite in Section 6\.4 runs on ACT only in v1\.0\. This keeps the 10\-week timeline feasible on a single M1 \(see Section 11\)\.
 
 # __4\. Target Audience__
 
@@ -249,13 +251,13 @@ N/A — cloud
 
 ## __6\.1  Policies Under Study__
 
-Three policies will be benchmarked in v1\.0, selected from the LeRobot model zoo for public availability of pretrained checkpoints and compatibility with MuJoCo\-based environments:
+v1\.0 benchmarks a single pretrained policy, selected for public availability of a sim\-trained checkpoint compatible with the MuJoCo gym\-aloha Transfer Cube task:
 
-- __Policy A — ACT \(Action Chunking with Transformers\): __Transformer\-based; outputs action chunks; strong on dexterous manipulation
-- __Policy B — Diffusion Policy \(CNN variant\): __Denoising diffusion; strong generalisation; heavier inference
-- __Policy C — Diffusion Policy \(Transformer variant\): __Same paradigm, different backbone; enables within\-paradigm ablation
+- __Policy A — ACT \(Action Chunking with Transformers\): __HuggingFace ID `lerobot/act_aloha_sim_transfer_cube_human`\. Transformer\-based; outputs action chunks; reports ~83% task success rate at 80k training steps on the source task\. Verified to exist on the HuggingFace Hub \(May 2026\)\.
 
-If any checkpoint proves incompatible with M1 MPS inference, a CPU\-only fallback or a smaller community fine\-tuned version will substitute\. Colab Pro is reserved for inference runs exceeding 4 GB VRAM\.
+Diffusion Policy was originally planned as Policies B and C\. A May 2026 audit of the public `lerobot/*` HuggingFace organisation confirmed that __no sim\-trained Diffusion Policy checkpoint exists for ALOHA Transfer Cube__: only `lerobot/diffusion_pusht` and `lerobot/diffusion_pusht_keypoints` are published, both for the PushT task\. Training Diffusion Policy from scratch on the `lerobot/aloha_sim_transfer_cube_human` dataset is out of scope for v1\.0 \(see Section 3\.2\) and is deferred to v1\.1 as a stretch goal\.
+
+If the ACT checkpoint proves incompatible with M1 MPS inference, a CPU\-only fallback will substitute\. Colab Pro is reserved for inference runs exceeding 4 GB VRAM\.
 
 ## __6\.2  Evaluation Tasks__
 
@@ -263,6 +265,8 @@ All evaluations use the gym\-aloha manipulation environment \(part of the LeRobo
 
 - __Transfer Cube Task: __Move a cube from one receptacle to another — standard, well\-understood baseline task
 - __Insertion Task \(stretch goal\): __Insert a peg into a socket — higher precision requirement, exposes more failure modes
+
+__Task success criterion \(Transfer Cube\):__ a rollout is considered successful when the cube's centre\-of\-mass z\-position exceeds `z_success = 0.05 m` __and__ its xy\-position lies inside the target receptacle bounding box \(default ±0\.05 m around the receptacle centre\) for `N_dwell = 5` consecutive simulation steps\. The defaults `(z_success, xy_tolerance, N_dwell) = (0.05 m, 0.05 m, 5)` are Week 1 placeholders and must be tuned against the `lerobot/act_aloha_sim_transfer_cube_human` checkpoint during the smoke\-test phase so that nominal\-condition TSR roughly matches the ~83% figure reported on the model card\. The tuned values are then frozen for all subsequent experiments\.
 
 ## __6\.3  Metrics__
 
@@ -326,7 +330,7 @@ Eval harness
 
 ## __6\.4  Robustness Perturbation Suite__
 
-The perturbation suite stresses each policy along four axes\. Each axis defines a range of perturbation intensities and reports TSR as a function of intensity — producing degradation curves rather than single\-point measurements:
+The perturbation suite stresses __Policy A \(ACT\) only__ in v1\.0 \(see Section 3\.2 for the rationale and v1\.1 expansion plan\) along four axes\. Each axis defines a range of perturbation intensities and reports TSR as a function of intensity — producing degradation curves rather than single\-point measurements:
 
 - __Spatial perturbation: __Object start position shifted ±1cm, ±3cm, ±5cm from nominal
 - __Visual perturbation: __Lighting intensity varied ±30%, ±60%; distractor object added to scene
@@ -373,7 +377,7 @@ End\-effector jitters in place for >5 steps
 
 Timeout
 
-Task not completed within step budget
+Task not completed within step budget \(default __400 steps__ for Transfer Cube; tunable per task in Hydra config\)
 
 Policy plateaus with no progress for 50\+ steps
 
@@ -503,7 +507,7 @@ Week 1
 
 __Baseline Policy Evaluation__
 
-Baseline metrics on 3 policies, evaluation harness v1
+Baseline metrics on Policy A \(ACT\); policy\-agnostic harness v1
 
 Weeks 2–3
 
@@ -571,17 +575,17 @@ W&B dashboard showing TSR ± std
 
 Eval v1
 
-Baseline TSR on Policies B & C; evaluation harness generalised
+Generalise harness to policy\-agnostic loader \(ready for v1\.1 DP\); expand ACT baseline to 3 seeds × 50 rollouts × nominal conditions
 
-All 3 policies run via single config flag
+Harness loads any LeRobot policy via single config flag; ACT baseline TSR ± std logged to W&B
 
 4
 
 Robustness
 
-Perturbation suite: object shift, lighting, distractor
+Perturbation suite \(ACT only\): object shift, lighting, distractor, action delay
 
-Perturbation TSR table complete
+Perturbation TSR table complete for Policy A
 
 5
 
@@ -652,6 +656,14 @@ __Impact__
 
 __Mitigation__
 
+Real\-trained checkpoint loaded into sim env
+
+Medium
+
+Near\-zero baseline TSR; eval results uninterpretable
+
+Only use sim\-trained variants from the LeRobot zoo \(e\.g\. `lerobot/act_aloha_sim_transfer_cube_human`\); verify on Day 1 by running the nominal\-condition rollout and confirming TSR > 50% before any further work
+
 M1 RAM OOM during inference
 
 High
@@ -696,7 +708,7 @@ Lock MVP scope at end of Phase 2; additional features go to backlog
 
 ## __12\.1  Project Success \(Technical\)__
 
-- Evaluation harness runs 3 policies end\-to\-end without manual intervention
+- Evaluation harness runs Policy A \(ACT\) end\-to\-end without manual intervention, and is policy\-agnostic enough to accept a second LeRobot policy via config change with no code changes
 - At least 150 rollouts classified into failure taxonomy with >85% inter\-rater agreement
 - Residual RL ablation complete with all 3 conditions and error bars
 - All 7 deliverables shipped to public\-facing channels
@@ -767,9 +779,9 @@ Complete these steps before writing any project code:
 1. Create GitHub repository: roboeval — set to public, MIT license, Python \.gitignore
 2. Install uv \(fast Python package manager\): curl \-LsSf https://astral\.sh/uv/install\.sh | sh
 3. Create project environment: uv venv \.venv && source \.venv/bin/activate
-4. Install core dependencies: uv add lerobot gymnasium mujoco stable\-baselines3 hydra\-core wandb plotly ruff mypy
+4. Install core dependencies \(pin LeRobot to a known\-good version\): uv add 'lerobot==0\.4\.4' gymnasium mujoco stable\-baselines3 hydra\-core wandb plotly ruff mypy
 5. Verify M1 MPS availability: python \-c "import torch; print\(torch\.backends\.mps\.is\_available\(\)\)" — should print True
-6. Run LeRobot smoke test: python \-c "from lerobot\.common\.policies\.act\.modeling\_act import ACTPolicy; print\('ACT loaded'\)"
+6. Run LeRobot smoke test: python \-c "from lerobot\.policies\.act\.modeling\_act import ACTPolicy; print\('ACT loaded'\)" — note that LeRobot 0\.4\.x removed the `lerobot\.common` namespace; import policies directly from `lerobot\.policies\.*`
 7. Create first W&B project at wandb\.ai — free account, project name: roboeval
 8. Set up pre\-commit hooks: uv add \-\-dev pre\-commit && pre\-commit install
 9. Read these 3 papers before writing any evaluation code: ACT \(Zhao et al\. 2023\), Diffusion Policy \(Chi et al\. 2023\), ResiP \(residual RL for manipulation, 2022\)
@@ -793,3 +805,4 @@ These are the minimum reading list before and during the project\. Reading these
 
 Document prepared by Rubeno Dechua — May 2026\. RoboEval is an independent portfolio project\. All tools referenced are open\-source or free\-tier\.
 
+ 
