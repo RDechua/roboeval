@@ -1,0 +1,28 @@
+# Fast smoke config for Phase C verification: 1 seed group x 10 rollouts.
+# Estimated wall time on M1 CPU: 3-5 minutes.
+# This is the development gate; the full act_nominal.yaml is the overnight run.
+
+policy:
+  repo_id: lerobot/act_aloha_sim_transfer_cube_human
+  device: mps
+
+env:
+  task: AlohaTransferCube-v0
+  episode_length: 400
+
+eval:
+  seeds: [0]
+  n_rollouts_per_seed: 10
+  max_steps: 400
+
+success:
+  z_threshold_m: 0.05
+  xy_tolerance_m: 0.05
+  dwell_steps: 5
+  target_xy: [0.0, 0.0]
+
+wandb:
+  project: roboeval
+  name_prefix: act_nominal_fast
+  tags: [week2, smoke, act]
+  mode: offline   # don't require W&B auth for the smoke run
