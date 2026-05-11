@@ -1,0 +1,136 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "roboeval"
+version = "0.1.0"
+description = "Evaluation harness and failure-mode study for open-source robot learning policies with residual RL fine-tuning."
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+license = { text = "MIT" }
+authors = [{ name = "Rubeno Dechua" }]
+keywords = [
+    "robotics",
+    "imitation-learning",
+    "reinforcement-learning",
+    "evaluation",
+    "act",
+    "diffusion-policy",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3.11",
+    "License :: OSI Approved :: MIT License",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "lerobot==0.4.4",
+    "gymnasium>=0.29,<2.0",
+    "mujoco>=3.0",
+    "stable-baselines3>=2.3",
+    "hydra-core>=1.3",
+    "wandb>=0.16",
+    "plotly>=5.20",
+    "dash>=2.17",
+    "seaborn>=0.13",
+    "matplotlib>=3.8",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.5,<0.6",
+    "mypy>=1.10",
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "pre-commit>=3.7",
+    "hatchling>=1.24",
+]
+docs = [
+    "mkdocs>=1.6",
+    "mkdocs-material>=9.5",
+    "mkdocstrings[python]>=0.25",
+]
+
+[project.scripts]
+roboeval = "roboeval.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/RubenoDechua/roboeval"
+Documentation = "https://github.com/RubenoDechua/roboeval#readme"
+
+[tool.hatch.build.targets.wheel]
+packages = ["roboeval"]
+
+# ---------------------------------------------------------------------------
+# Ruff
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+extend-exclude = [".venv", "analysis", "docs/RoboEval_PRD_Rubeno_Dechua.docx"]
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "W",  # pycodestyle + pyflakes
+    "I",             # isort
+    "B",             # bugbear
+    "N",             # pep8-naming
+    "UP",            # pyupgrade
+    "ANN",           # flake8-annotations
+    "D",             # pydocstyle
+    "RUF",           # ruff-specific
+    "SIM",           # flake8-simplify
+    "PTH",           # use pathlib
+    "BLE",           # blind-except
+]
+ignore = [
+    "D203",  # one-blank-line-before-class (conflicts with D211)
+    "D213",  # multi-line-summary-second-line (conflicts with D212)
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D", "ANN"]
+
+# ---------------------------------------------------------------------------
+# Mypy
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unreachable = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+no_implicit_reexport = true
+show_error_codes = true
+files = ["roboeval"]
+
+[[tool.mypy.overrides]]
+module = [
+    "lerobot.*",
+    "gym_aloha.*",
+    "gymnasium.*",
+    "mujoco.*",
+    "stable_baselines3.*",
+    "wandb.*",
+    "plotly.*",
+    "dash.*",
+    "seaborn.*",
+    "matplotlib.*",
+    "hydra.*",
+    "omegaconf.*",
+    "torch.*",
+]
+ignore_missing_imports = true
+
+# ---------------------------------------------------------------------------
+# Pytest
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra -q --strict-markers"
+testpaths = ["tests"]
