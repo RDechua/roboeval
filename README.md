@@ -8,23 +8,67 @@ RoboEval systematically measures where state-of-the-art imitation learning polic
 classifies failure modes into an operationalised taxonomy, and demonstrates a residual RL
 loop that recovers the highest-frequency failure.
 
-**Stack:** Python · MuJoCo · LeRobot · Stable-Baselines3 · Hydra · Weights & Biases · Plotly  
+**Stack:** Python 3.11 · MuJoCo · LeRobot · Stable-Baselines3 · Hydra · Weights & Biases · Plotly
 **Hardware target:** Apple M1 (CPU/MPS) — no CUDA required for evaluation
 
 ## Status
 
-🚧 Under active development — v1.0 targeting July 2026
+Under active development — v1.0 targeting July 2026. Authoritative spec: [`docs/PRD.md`](docs/PRD.md).
 
-## Structure (coming soon)
+## Repository Layout
 
-- `roboeval/` — core evaluation library
-- `configs/` — Hydra experiment configs
-- `analysis/` — dashboard and notebooks
-- `docs/` — MkDocs documentation
+Follows PRD Section 5.2:
 
-## Getting Started
+```
+roboeval/
+├── configs/              # Hydra YAML configs per experiment
+│   ├── baseline/
+│   ├── perturbation/
+│   └── residual_rl/
+├── roboeval/             # Core typed Python library
+│   ├── envs/             # Gymnasium env wrappers
+│   ├── policies/         # LeRobot policy loaders
+│   ├── evaluation/       # Rollout engine + metrics
+│   ├── taxonomy/         # Failure-mode classifier
+│   └── residual/         # SB3 PPO residual trainer
+├── analysis/             # Notebooks + Plotly dashboard
+├── docs/                 # PRD + MkDocs source
+├── tests/                # pytest unit + integration tests
+└── .github/workflows/    # CI: ruff + mypy + pytest
+```
 
-_Setup instructions coming in v0.1_
+## Quick Start (Day 1)
+
+```bash
+# 1. Create venv and install (Python 3.11)
+uv venv .venv && source .venv/bin/activate
+uv pip install -e '.[dev]'
+
+# 2. Verify M1 MPS is available
+python -c "import torch; print('mps:', torch.backends.mps.is_available())"
+
+# 3. Verify LeRobot 0.4.4 is importable with the new namespace
+python -c "from lerobot.policies.act.modeling_act import ACTPolicy; print('ACT loaded')"
+
+# 4. Run the Week 1 smoke rollout (random actions, 10 steps)
+roboeval smoke --steps 10
+
+# 5. Install pre-commit hooks
+pre-commit install
+```
+
+Note: LeRobot 0.4.x removed the `lerobot.common` namespace — import policies directly from `lerobot.policies.*`.
+
+## Quality Gates
+
+```bash
+ruff check .
+ruff format --check .
+mypy --strict roboeval
+pytest -q
+```
+
+CI runs all four on every push to `main` and every PR.
 
 ## License
 
