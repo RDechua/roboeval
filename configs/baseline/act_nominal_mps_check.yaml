@@ -29,9 +29,11 @@ eval:
 
 success:
   z_threshold_m: 0.05
-  xy_tolerance_m: 0.05
+  # Calibrated 2026-05-12 (commit c3a279b); see
+  # data/calibration/transfer_cube_target_xy.json.
+  xy_tolerance_m: 0.02185
   dwell_steps: 5
-  target_xy: [0.0, 0.0]
+  target_xy: [-0.01835, 0.50576]
 
 wandb:
   project: roboeval
