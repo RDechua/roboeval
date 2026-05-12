@@ -13,6 +13,7 @@ from typing import Any, ClassVar
 import gymnasium as gym
 import numpy as np
 import numpy.typing as npt
+import pytest
 from gymnasium import spaces
 
 from roboeval.envs.success import SuccessCriterion, TransferCubeSuccessDetector
@@ -124,6 +125,89 @@ def test_rollout_truncation_records_truncated_true():
     assert result.terminated is False
     assert result.success_step is None
     assert result.n_steps == 20
+
+
+class _BadPolicy:
+    """Policy that returns a configurable bad action — used to trip safety asserts."""
+
+    policy_id = "bad"
+    device = "cpu"
+
+    def __init__(self, action):
+        self._action = action
+        self.n_reset_calls = 0
+
+    def reset(self):
+        self.n_reset_calls += 1
+
+    def select_action(self, observation):
+        del observation
+        return self._action
+
+
+def test_rollout_raises_on_nan_action():
+    env = MockEnv(success_after_n=100, max_steps=20)
+    bad_action = np.full(14, np.nan, dtype=np.float32)
+    with pytest.raises(RuntimeError, match="non-finite action"):
+        run_rollout(
+            env=env,
+            policy=_BadPolicy(bad_action),
+            success_detector=TransferCubeSuccessDetector(SuccessCriterion()),
+            seed_group=0,
+            rollout_idx=0,
+            episode_seed=0,
+            max_steps=20,
+            cube_state_fn=_fake_cube_state,
+        )
+
+
+def test_rollout_raises_on_inf_action():
+    env = MockEnv(success_after_n=100, max_steps=20)
+    bad_action = np.full(14, np.inf, dtype=np.float32)
+    with pytest.raises(RuntimeError, match="non-finite action"):
+        run_rollout(
+            env=env,
+            policy=_BadPolicy(bad_action),
+            success_detector=TransferCubeSuccessDetector(SuccessCriterion()),
+            seed_group=0,
+            rollout_idx=0,
+            episode_seed=0,
+            max_steps=20,
+            cube_state_fn=_fake_cube_state,
+        )
+
+
+def test_rollout_raises_on_out_of_bound_action():
+    env = MockEnv(success_after_n=100, max_steps=20)
+    bad_action = np.full(14, 1e6, dtype=np.float32)
+    with pytest.raises(RuntimeError, match="out-of-bound action"):
+        run_rollout(
+            env=env,
+            policy=_BadPolicy(bad_action),
+            success_detector=TransferCubeSuccessDetector(SuccessCriterion()),
+            seed_group=0,
+            rollout_idx=0,
+            episode_seed=0,
+            max_steps=20,
+            cube_state_fn=_fake_cube_state,
+        )
+
+
+def test_rollout_accepts_normal_actions_within_bounds():
+    """Slightly-out-of-box but within sanity ceiling should still be accepted."""
+    env = MockEnv(success_after_n=5, max_steps=20)
+    ok_action = np.full(14, 5.0, dtype=np.float32)  # > 1.0 box, << 100.0 ceiling
+    result = run_rollout(
+        env=env,
+        policy=_BadPolicy(ok_action),
+        success_detector=TransferCubeSuccessDetector(SuccessCriterion()),
+        seed_group=0,
+        rollout_idx=0,
+        episode_seed=0,
+        max_steps=20,
+        cube_state_fn=_fake_cube_state,
+    )
+    assert result.n_steps == 5
 
 
 def test_rollout_custom_success_detected_via_high_cube():
