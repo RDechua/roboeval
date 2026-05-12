@@ -1,0 +1,40 @@
+# MPS verification gate: 1 seed group x 50 rollouts on the ACT policy.
+# Sits between act_nominal_fast.yaml (10 rollouts, ~80s) and the full
+# act_nominal.yaml (150 rollouts, ~20 min). The goal is NOT a publishable
+# TSR estimate — it is to confirm MPS stays stable past the smoke's
+# 10-rollout horizon BEFORE we commit to the full overnight run.
+#
+# What this proves on success:
+#   - All 50 rollouts complete without RuntimeError from the NaN/bound
+#     guards added in C3.
+#   - MPS does not silently fall back to CPU (torch.backends.mps remains
+#     available and built throughout).
+#   - max(wall_time_s) / median(wall_time_s) < 3.0 (no extreme stalls).
+#   - mean_tsr > 0.5 (proves inference is correct, not producing garbage).
+#
+# Wall-time on M1 MPS: ~6-7 minutes.
+
+policy:
+  repo_id: lerobot/act_aloha_sim_transfer_cube_human
+  device: mps
+
+env:
+  task: AlohaTransferCube-v0
+  episode_length: 400
+
+eval:
+  seeds: [0]
+  n_rollouts_per_seed: 50
+  max_steps: 400
+
+success:
+  z_threshold_m: 0.05
+  xy_tolerance_m: 0.05
+  dwell_steps: 5
+  target_xy: [0.0, 0.0]
+
+wandb:
+  project: roboeval
+  name_prefix: act_mps_check
+  tags: [week2-5, mps-verification, act]
+  mode: offline
