@@ -36,9 +36,14 @@ class RolloutResult:
         truncated: Whether the env hit ``max_episode_steps``.
         wall_time_s: Wall-clock seconds for this rollout (post-reset).
         final_cube_z: Cube z-coordinate at end-of-episode (metres).
+        final_cube_x: Cube x-coordinate at end-of-episode (metres).
+            Used by the Week 2.5 ``calibrate`` subcommand to derive
+            ``target_xy`` for the geometric success criterion.
+        final_cube_y: Cube y-coordinate at end-of-episode (metres).
         final_cube_xy_dist: Euclidean distance from origin in xy at
-            end-of-episode (metres); used for diagnostics on
-            geometric-criterion failures.
+            end-of-episode (metres); kept for backward-compatible
+            diagnostics. ``sqrt(final_cube_x**2 + final_cube_y**2)``
+            is the same number when ``target_xy=(0,0)``.
         failure_mode: Free-form label written by the failure-taxonomy
             classifier (Week 5). Empty string for Week 2 baseline runs.
     """
@@ -55,6 +60,8 @@ class RolloutResult:
     truncated: bool
     wall_time_s: float
     final_cube_z: float
+    final_cube_x: float
+    final_cube_y: float
     final_cube_xy_dist: float
     failure_mode: str = ""
 

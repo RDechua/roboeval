@@ -219,6 +219,159 @@ def _cmd_evaluate(config_path: str) -> int:
     return 0
 
 
+def _cmd_calibrate(
+    config_path: str,
+    output_path: str,
+    n_rollouts: int,
+) -> int:
+    """Calibrate ``target_xy`` and ``xy_tolerance_m`` from N nominal rollouts.
+
+    Runs the ACT policy in nominal conditions, collects the cube xy
+    endpoint for every primary-successful rollout, and writes a frozen
+    calibration JSON. The operator then updates the success block in
+    the eval configs by hand (or via a subsequent commit) using the
+    values printed at the end of the run.
+
+    See :mod:`roboeval.evaluation.calibration` for the math.
+
+    Args:
+        config_path: Hydra YAML used as the source-of-truth for
+            ``policy``, ``env``, ``eval.max_steps``, and ``wandb``
+            blocks. The ``eval.seeds`` and ``eval.n_rollouts_per_seed``
+            fields are overridden by ``--n-rollouts`` so the caller
+            doesn't need a separate config file.
+        output_path: Where to write the calibration JSON (typically
+            ``data/calibration/transfer_cube_target_xy.json``).
+        n_rollouts: Number of single-seed rollouts to run.
+
+    Returns:
+        ``0`` on success, ``1`` if a dependency is missing, ``2`` if
+        the policy fails to load, ``3`` if calibration fails to derive
+        a centroid (e.g. too few successes), ``4`` if the rollouts
+        themselves crash.
+    """
+    import json
+    import subprocess
+    from datetime import UTC, datetime
+    from pathlib import Path
+
+    try:
+        from omegaconf import OmegaConf
+
+        from roboeval.envs.aloha import ALOHA_TRANSFER_CUBE_ID, make_aloha_env
+        from roboeval.envs.success import (
+            SuccessCriterion,
+            TransferCubeSuccessDetector,
+        )
+        from roboeval.evaluation.calibration import (
+            calibrate_target_xy,
+            calibration_to_dict,
+        )
+        from roboeval.evaluation.loop import evaluate_policy
+        from roboeval.policies.act_loader import load_act_policy
+    except ImportError as exc:
+        _LOG.error("Missing dependency: %s", exc)
+        return 1
+
+    cfg = OmegaConf.load(config_path)
+    target_xy_list = list(cfg.success.target_xy)
+    placeholder_criterion = SuccessCriterion(
+        z_threshold_m=float(cfg.success.z_threshold_m),
+        xy_tolerance_m=float(cfg.success.xy_tolerance_m),
+        dwell_steps=int(cfg.success.dwell_steps),
+        target_xy=(float(target_xy_list[0]), float(target_xy_list[1])),
+    )
+
+    _LOG.info(
+        "Loading ACT policy %s on device=%s for calibration",
+        str(cfg.policy.repo_id),
+        str(cfg.policy.device),
+    )
+    try:
+        policy = load_act_policy(
+            repo_id=str(cfg.policy.repo_id),
+            task=str(cfg.env.task),
+            device=str(cfg.policy.device),
+        )
+    except Exception as exc:  # noqa: BLE001 - cli boundary
+        _LOG.exception("Failed to load policy: %s", exc)
+        return 2
+
+    _LOG.info("Running %d calibration rollouts (single seed, no W&B)", n_rollouts)
+    try:
+        result = evaluate_policy(
+            env_factory=lambda: make_aloha_env(
+                task=str(cfg.env.task),
+                episode_length=int(cfg.env.episode_length),
+            ),
+            policy=policy,
+            detector_factory=lambda: TransferCubeSuccessDetector(placeholder_criterion),
+            seeds=[0],
+            n_rollouts_per_seed=n_rollouts,
+            max_steps=int(cfg.eval.max_steps),
+            policy_id=str(cfg.policy.repo_id),
+            env_id=ALOHA_TRANSFER_CUBE_ID,
+        )
+    except Exception as exc:  # noqa: BLE001 - cli boundary
+        _LOG.exception("Calibration rollouts crashed: %s", exc)
+        return 4
+
+    try:
+        calib = calibrate_target_xy(result.rollouts)
+    except ValueError as exc:
+        _LOG.error("Calibration failed: %s", exc)
+        return 3
+
+    git_sha = _git_sha()
+    payload = calibration_to_dict(
+        calib,
+        git_sha=git_sha,
+        timestamp=datetime.now(UTC).isoformat(),
+        source_config=config_path,
+        policy_id=str(cfg.policy.repo_id),
+        env_id=ALOHA_TRANSFER_CUBE_ID,
+    )
+
+    out = Path(output_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(payload, indent=2))
+
+    print(
+        f"\n[roboeval] Calibration complete.\n"
+        f"  target_xy        = ({calib.target_xy[0]:.5f}, "
+        f"{calib.target_xy[1]:.5f})\n"
+        f"  xy_tolerance_m   = {calib.xy_tolerance_m:.5f}  "
+        f"({calib.percentile:.0f}th percentile of "
+        f"||endpoint - centroid||)\n"
+        f"  n_successes      = {calib.n_successes} / {calib.n_rollouts}\n"
+        f"  written to       = {out}\n"
+        f"\nUpdate configs/baseline/act_nominal*.yaml `success.target_xy` and\n"
+        f"`success.xy_tolerance_m` with the values above; then re-run the fast\n"
+        f"smoke to confirm mean_tsr_custom converges to mean_tsr_native.\n"
+    )
+    del subprocess  # only imported for type clarity; _git_sha handles it
+    return 0
+
+
+def _git_sha() -> str:
+    """Return the current ``HEAD`` short SHA, or ``'unknown'`` on failure.
+
+    Returns:
+        Short git SHA string.
+    """
+    import subprocess
+
+    try:
+        sha = subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            stderr=subprocess.DEVNULL,
+            text=True,
+        ).strip()
+        return sha or "unknown"
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return "unknown"
+
+
 def _build_parser() -> argparse.ArgumentParser:
     """Build the top-level argument parser.
 
@@ -259,6 +412,30 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Path to YAML config (e.g. configs/baseline/act_nominal_fast.yaml).",
     )
 
+    calibrate = subparsers.add_parser(
+        "calibrate",
+        help="Calibrate target_xy + xy_tolerance from N nominal rollouts.",
+    )
+    calibrate.add_argument(
+        "--config",
+        required=True,
+        help="YAML config that sources policy/env settings (e.g. act_nominal.yaml).",
+    )
+    calibrate.add_argument(
+        "--output",
+        default="data/calibration/transfer_cube_target_xy.json",
+        help="Path to write the calibration JSON.",
+    )
+    calibrate.add_argument(
+        "--n-rollouts",
+        type=int,
+        default=50,
+        help=(
+            "Number of single-seed rollouts to run (default: 50; see "
+            "roboeval/evaluation/calibration.py for the justification)."
+        ),
+    )
+
     return parser
 
 
@@ -280,5 +457,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _cmd_smoke(int(args.steps))
     if args.command == "evaluate":
         return _cmd_evaluate(str(args.config))
+    if args.command == "calibrate":
+        return _cmd_calibrate(
+            config_path=str(args.config),
+            output_path=str(args.output),
+            n_rollouts=int(args.n_rollouts),
+        )
     # Unreachable: subparsers(required=True) enforces a known command.
     raise AssertionError(f"unhandled command: {args.command!r}")

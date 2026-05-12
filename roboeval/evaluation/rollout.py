@@ -166,8 +166,10 @@ def run_rollout(
             break
 
     wall_time = time.perf_counter() - start_t
+    final_x = float(final_cube_state[0])
+    final_y = float(final_cube_state[1])
     final_z = float(final_cube_state[2])
-    final_xy = float(np.hypot(final_cube_state[0], final_cube_state[1]))
+    final_xy = float(np.hypot(final_x, final_y))
 
     return RolloutResult(
         seed_group=seed_group,
@@ -182,5 +184,7 @@ def run_rollout(
         truncated=bool(truncated),
         wall_time_s=wall_time,
         final_cube_z=final_z,
+        final_cube_x=final_x,
+        final_cube_y=final_y,
         final_cube_xy_dist=final_xy,
     )

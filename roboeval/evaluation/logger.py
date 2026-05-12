@@ -41,6 +41,8 @@ _ROLLOUT_TABLE_COLUMNS: list[str] = [
     "truncated",
     "wall_time_s",
     "final_cube_z",
+    "final_cube_x",
+    "final_cube_y",
     "final_cube_xy_dist",
     "failure_mode",
 ]
@@ -84,6 +86,8 @@ class WandbRunHandle:
             result.truncated,
             result.wall_time_s,
             result.final_cube_z,
+            result.final_cube_x,
+            result.final_cube_y,
             result.final_cube_xy_dist,
             result.failure_mode,
         )
