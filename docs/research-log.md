@@ -115,3 +115,83 @@ PRD Section 10.2 Week 3 target — "Generalise harness to policy-agnostic loader
 - The "Unexpected key(s) when loading model" warning lists `normalize_inputs.*` and `normalize_targets.*` buffers — confirm the new processor pipeline really does carry the same normalisation stats end-to-end. If not, our 80% might be a lucky-coincidence accuracy and the true ACT performance is higher.
 
 ---
+
+## Week 2.5 — 2026-05-12
+
+A consolidation pass between Week 2 (got the baseline working) and Week 3 (full-scale + perturbation prep). Goal: close the gaps that survived the Tier 1 PRD review, lock in the baseline properly before any new feature work, and put CI online for the first time.
+
+### PRD patches landed (commit `b7abb59`)
+
+**σ target — relaxed `< 5%` → `< 7%`** (Section 6.3). The original 5% bound was statistically tight: at the model card's ~80% TSR with N=50 rollouts per seed, the irreducible per-seed-group Bernoulli SE is `sqrt(0.8·0.2/50) ≈ 5.7%`. Achieving `<5%` would have required N=100 per seed, doubling compute for no real insight. `< 7%` catches genuine anomalies (e.g. one seed group landing 10pp off the others) without flagging the natural Bernoulli noise as a failure. The italic note below the metrics table now carries the math so future readers see *why*.
+
+**Inter-rater reliability protocol — replaced 1-labeller `>85% agreement` with single-labeller blinded self-relabel + Cohen's κ > 0.6** (Section 7.3 step 4 + Section 12.1 bullet 2). The original >85% target was meaningless with a single labeller and didn't account for chance. Replacement: auto-classifier labels all 150+ rollouts; a stratified 30-rollout sample (5 per category) is exported with auto-labels redacted; ≥7-day memory-wash gap enforced via a `data/taxonomy/relabel_unlock_at` timestamp file the labelling script reads; manual labels written to a separate JSON; Cohen's κ computed offline. The κ threshold is 0.6 (substantial agreement per Landis & Koch 1977 with wider single-labeller CIs) rather than the multi-labeller 0.7 — your direction.
+
+**Compute footprint — new Section 10.2.1; Section 11 risk downgraded** (Section 10.2.1 + Section 11 "Eval too slow on CPU"). The Phase A estimate of 2.5–4 hours for the full nominal was based on CPU inference; MPS delivers ~10× speedup, so the real number is ~20–25 minutes for 3 seeds × 50 rollouts. Perturbation suite (~1,800 rollouts) collapses from multi-day on CPU to ~4 hours on MPS. The risk row "Eval is too slow on CPU" is now Low likelihood; CPU fallback remains the contingency for an MPS regression. Section 8.2's residual-RL compute estimate is unchanged for now — we'll revise it from Week 6 baseline data.
+
+### Calibrated `target_xy` and `xy_tolerance_m`
+
+Ran `roboeval calibrate --config configs/baseline/act_nominal_fast.yaml --n-rollouts 50` against the live `lerobot/act_aloha_sim_transfer_cube_human` checkpoint on M1 MPS at calibration-run commit `c3a279b`. 50 rollouts, single seed, no W&B writes.
+
+| field | value |
+|---|---|
+| `target_xy` | `(-0.01835, 0.50576)` m |
+| `xy_tolerance_m` | `0.02185` m (90th percentile of `||endpoint - centroid||`) |
+| n_rollouts | 50 |
+| n_successes | 44 (88%) |
+| frozen artifact | `data/calibration/transfer_cube_target_xy.json` |
+
+The key insight: the left-arm receptacle is offset **~0.5 m in +y** from the world origin. That's why Week 2's placeholder `target_xy=(0, 0)` produced `mean_tsr_custom=0.000`. The calibrated tolerance (2.2 cm) is also tighter than the 5 cm default, so the geometric criterion now discriminates a held-but-misplaced cube from a properly-placed one — useful in Week 4 when contact-based primary signal becomes unreliable under perturbation.
+
+Verified convergence by re-running the fast smoke after calibration:
+
+```
+[roboeval] Evaluation complete.
+  mean_tsr        = 0.800 +/- 0.000  (primary, gym-aloha native is_success)
+  mean_tsr_custom = 0.600 +/- 0.000  (PRD z+xy+dwell)
+```
+
+`mean_tsr_custom` moved from `0.000` (Week 2 smoke) → `0.600` (post-calibration smoke). The 0.2 gap from `tsr_native` reflects the design choice: the 90th-percentile tolerance asymptotically gives `0.9 × tsr_native`, so at n=10 with 8 native successes we expect ~7 customs and got 6. The full 150-rollout Week 3 nominal will land closer to `~0.79` custom vs `~0.88` native.
+
+### MPS verification result
+
+Ran `roboeval evaluate --config configs/baseline/act_nominal_mps_check.yaml` (1 seed × 50 rollouts).
+
+| pass criterion | result |
+|---|---|
+| 50/50 rollouts completed | ✓ |
+| No `RuntimeError` from NaN/bound guards | ✓ (zero raised) |
+| `torch.backends.mps.is_available()` stayed `True` | ✓ |
+| `max(wall_time_s) / median(wall_time_s) < 3.0` | ✓ — observed **1.51** (5.50 s min / 7.00 s median / 10.60 s max) |
+| `mean_tsr > 0.5` | ✓ — observed **0.880** (44/50) |
+
+Total wall: 6.0 minutes. MPS is stable past the smoke's 10-rollout horizon; the full 150-rollout Week 3 run is unblocked.
+
+### CI first-run outcome
+
+Not yet pushed. The Week 1 CI workflow installed only ruff/mypy/pytest, which would have failed pytest collection on clean Ubuntu because several non-slow tests transitively import `gymnasium`, `numpy`, `omegaconf`, `pyyaml`, `wandb`, and `torch`. Commit `3f360ce` adds those to the install step, with `torch` pinned to the CPU-only wheel via `--index-url https://download.pytorch.org/whl/cpu` (no multi-GB CUDA download on Linux). Following your direction, we did NOT add `pytest.importorskip` for these — real regressions must fail CI, not silently skip.
+
+CI status will be reported in the next session entry after the push.
+
+### Top bugs hit this session
+
+1. **`int(reward)` and other `mypy --strict` numeric-protocol slips.** The reward returned from `env.step` is typed `SupportsFloat`, not `SupportsInt`. Fix: route through `int(float(reward))`. Same shape of issue keeps recurring at the env/torch boundary; build a typed wrapper later.
+
+2. **`docstring \ space escape` triggered DeprecationWarning during pytest collection.** `RolloutResult`\ s in a RST-style docstring is a syntax pattern Sphinx wants but Python parses as a deprecated escape sequence. Fix: just write the prose plainly without the backslash-space trick.
+
+3. **`monkeypatch.setattr` is structurally fragile for default-argument capture.** Discovered in Week 2 with `cube_state_fn`; the CLI regression test in Week 2.5 would have re-triggered it had I not preemptively refactored `evaluate_policy`'s `cube_state_fn` default from `get_cube_state` (captured at def time) to `None` (resolved via module-level name lookup at call time). Lesson: any time a function takes a "magic default that production reads", the default must be `None` and resolved inside the body, or monkeypatching during tests becomes impossible without invasive refactors.
+
+### Forward-looking note (Week 5 prep, deferred)
+
+Per-rollout video artifacts are deferred to Week 5. Storage cost is ~3 MB/rollout × ~1,800 perturbation rollouts = ~5.4 GB, large vs the 8 GB M1 RAM. The actual taxonomy-labelling UX likely only needs keyframes at decision moments (~4 frames × 30 KB = 120 KB per rollout, ~200 MB total) — design decision deferred until we know what Week 5's labelling tool looks like. The PRD's "90-second demo video" deliverable (Section 9) is hand-curated highlights, not exhaustive rollout video.
+
+### Next session (target: Week 3 — full nominal + harness generalisation)
+
+PRD Section 10.2 Week 3 target — "Generalise harness to policy-agnostic loader (ready for v1.1 DP); expand ACT baseline to 3 seeds × 50 rollouts × nominal conditions" / done = "Harness loads any LeRobot policy via single config flag; ACT baseline TSR ± std logged to W&B".
+
+1. **Push the Week 2.5 commits to GitHub** and watch CI green. Fix any clean-Ubuntu-only issues. Once CI is verified, push remains the project's normal operating mode.
+2. **Run the full `act_nominal.yaml`** (3 seeds × 50 rollouts) under W&B online auth. Expected wall: ~20 minutes. Confirm `σ_TSR < 7%` (the new PRD bound) and `mean_tsr_custom` converges to within ~10pp of `mean_tsr_native`.
+3. **Generalise the policy factory**: extract `load_policy(repo_id, kind, ...) → Policy` dispatching on `kind ∈ {"act", "diffusion"}`. Keep `load_act_policy` as a thin wrapper; `load_diffusion_policy` lands when a v1.1 DP checkpoint exists.
+4. **Verify reproducibility**: re-run the fast config a second time with the same seed; confirm bit-identical per-rollout `success` and `n_steps`. If not, find the source of non-determinism (MuJoCo? dm_control RNG? MPS reduction order?) and pin it before Week 4 perturbation runs depend on it.
+5. **Open the `eval_info.json` on the HF model card repo** and confirm the exact step budget + success criterion used to compute the published ~83% TSR. We're at 88% on the MPS check, so if their harness used a tighter criterion we're actually above the published number, not at it.
+
+---
