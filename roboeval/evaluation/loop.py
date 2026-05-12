@@ -36,7 +36,7 @@ def evaluate_policy(
     policy_id: str,
     env_id: str,
     on_rollout: Callable[[RolloutResult], None] | None = None,
-    cube_state_fn: CubeStateFn = get_cube_state,
+    cube_state_fn: CubeStateFn | None = None,
 ) -> EvalResult:
     """Iterate ``(seed_group, rollout_idx)`` pairs and aggregate the results.
 
@@ -60,14 +60,20 @@ def evaluate_policy(
         env_id: Gymnasium env id, for the EvalResult.
         on_rollout: Optional per-rollout callback (used by the W&B logger
             to stream rows into the rollouts table as the eval progresses).
-        cube_state_fn: Accessor for the cube's 7-element qpos slice.
-            Defaults to :func:`roboeval.envs.aloha.get_cube_state`;
-            overridden in unit tests with a mock that doesn't touch
-            ``dm_control``.
+        cube_state_fn: Accessor for the cube's 7-element qpos slice. When
+            ``None`` (the default) we look up
+            :func:`roboeval.envs.aloha.get_cube_state` at call time — this
+            indirection is what lets unit tests monkeypatch
+            ``roboeval.evaluation.loop.get_cube_state`` and have the patch
+            take effect (binding through a default argument captures the
+            original function object at definition time and is unaffected
+            by later ``setattr``).
 
     Returns:
         Aggregated :class:`EvalResult`.
     """
+    if cube_state_fn is None:
+        cube_state_fn = get_cube_state
     env = env_factory()
     detector = detector_factory()
     results: list[RolloutResult] = []
