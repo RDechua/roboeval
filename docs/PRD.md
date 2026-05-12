@@ -324,13 +324,13 @@ Ablation table
 
 Eval Reproducibility \(σ\)
 
-Std dev across 3 random seeds per config
+Std dev across 3 seed groups, each with ≥50 rollouts
 
 Eval harness
 
-σ < 5%
+σ < 7%
 
-*All metrics are reported as mean ± standard deviation across 3 random seeds and ≥50 rollouts per condition\. This is the minimum bar for results to be credible in a research context\.*
+*All metrics are reported as mean ± standard deviation across 3 random seeds and ≥50 rollouts per condition\. This is the minimum bar for results to be credible in a research context\. The σ < 7% target on TSR reproducibility is set above the irreducible per\-seed\-group Bernoulli SE of ~5\.7% at p ≈ 0\.8 and N = 50; tightening the bar would require N ≥ 100 per seed, which doubles compute without commensurate insight\.*
 
 ## __6\.4  Robustness Perturbation Suite__
 
@@ -396,7 +396,7 @@ Success drops >30% under changed lighting
 1. Run evaluation harness; save full rollout trajectory \(observations, actions, rewards\) per episode
 2. Auto\-classify rollouts into failure categories using a rule\-based classifier \(threshold on position error, action variance, step count\)
 3. Manually review a stratified sample of 30 rollouts \(5 per category\) to validate classifier accuracy
-4. Report inter\-rater reliability on the sample \(target: agreement > 85%\)
+4. Validate the rule\-based classifier via a single\-labeller __blinded self\-relabel__: export a stratified sample of 30 rollouts \(5 per category\) with auto\-labels redacted, wait ≥7 days for a memory\-wash, then manually re\-label the sample blind to the auto\-labels\. Compute __Cohen's κ__ between auto and manual labels\. Target __κ > 0\.6__ \(substantial agreement per Landis & Koch 1977; the standard for single\-labeller robotics evals where wider single\-labeller CIs preclude the 0\.7 threshold used in multi\-labeller settings\)\. Blinding is enforced by storing auto\-labels in `data/taxonomy/auto_labels_${RUN_SHA}.json` \(frozen\) and the redacted sample in `data/taxonomy/relabel_sample_${RUN_SHA}.json`; the manual labels are written to `data/taxonomy/manual_labels_${RUN_SHA}.json` ≥7 days later \(enforced via the `data/taxonomy/relabel_unlock_at` timestamp file the labelling script reads\)\.
 5. Produce per\-policy failure distribution heatmap
 
 # __8\. Residual RL Design__
@@ -639,6 +639,17 @@ Tag v1\.0 release; post on LinkedIn \+ r/MachineLearning; cold outreach
 
 5\+ GitHub stars within first week
 
+## __10\.2\.1  Measured compute footprint \(M1 MPS, May 2026\)__
+
+Wall\-clock measured on the Apple M1 \(8 GB\) with MPS active, after the Week 2 verification smoke \(`act_nominal_fast\.yaml`\):
+
+- __Per ACT rollout: __5\.4–13\.2 s \(avg ~8 s; spread driven by the ACT chunk\-queue refill cadence — every ~50 steps the queue empties and a full transformer forward pass adds ~200 ms\)\.
+- __Full nominal eval \(`act_nominal\.yaml`, 3 seeds × 50 rollouts, 400\-step cap\): __~20–25 minutes\. Originally estimated at 2\.5–4 hours assuming CPU inference; MPS delivers a ~10× speedup on the convnet backbone\.
+- __Perturbation suite \(Week 4, ACT only, 4 axes × ~3 intensities × 3 seeds × 50 rollouts ≈ 1,800 rollouts\): __~4 hours\. Originally estimated at multi\-day on CPU\.
+- __Residual RL training \(Week 6\-7, 500k env steps\): __still the dominant compute cost; revise the M1 estimate in Section 8\.2 only once Week 6 baseline data is in\.
+
+Implication: the full nominal run is now a coffee\-break task, not an overnight task\. Section 11's "Eval is too slow on CPU" risk row is consequently downgraded to Low likelihood; CPU fallback remains the contingency for any future MPS regression\.
+
 ## __10\.3  Definition of Done__
 
 The project is done when all of the following are true simultaneously:
@@ -694,11 +705,11 @@ Reframe as negative result with analysis — still publishable; focus writeup on
 
 Eval is too slow on CPU
 
-Medium
+Low
 
 Limits rollout count
 
-Vectorize env with Gymnasium AsyncVectorEnv; parallelise across CPU cores
+MPS verified on M1 in Week 2 \(~8 s per ACT rollout, ~20 min for the full 150\-rollout nominal\)\. CPU fallback \(`device: cpu` in eval config\) remains the contingency for MPS regression; AsyncVectorEnv parallelisation is reserved for that contingency rather than required upfront\.
 
 Project scope creep
 
@@ -713,7 +724,7 @@ Lock MVP scope at end of Phase 2; additional features go to backlog
 ## __12\.1  Project Success \(Technical\)__
 
 - Evaluation harness runs Policy A \(ACT\) end\-to\-end without manual intervention, and is policy\-agnostic enough to accept a second LeRobot policy via config change with no code changes
-- At least 150 rollouts classified into failure taxonomy with >85% inter\-rater agreement
+- At least 150 rollouts classified into failure taxonomy; rule\-based classifier validated via a 30\-rollout self\-relabel with blinding \(≥7\-day gap\) reaching Cohen's κ > 0\.6 \(substantial agreement\)
 - Residual RL ablation complete with all 3 conditions and error bars
 - All 7 deliverables shipped to public\-facing channels
 
