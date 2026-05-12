@@ -8,6 +8,21 @@ geometric secondary criterion via
 
 The cube-state accessor is parameterised (``cube_state_fn``) so unit tests
 can substitute a mock without going through ``dm_control``.
+
+Two safety assertions fire on every step:
+
+* ``not np.isnan(action).any()`` — guards against MPS / torch numerical
+  blowup or stats-loaded-wrong silently producing NaN actions that the
+  env then runs with.
+* ``np.abs(action).max() < _ACTION_BOUND_LIMIT`` — the env action space
+  is ``Box(-1, 1)``; any value outside that range by more than a small
+  margin signals the postprocessor failed to denormalise or the policy
+  is in an unrecoverable regime. Better to fail loudly mid-rollout than
+  silently produce 100% failure rates from out-of-range actions.
+
+Both assertions raise :class:`RuntimeError` rather than returning a
+failed :class:`RolloutResult`, because a NaN/blowup is a contract
+violation of the policy adapter, not a normal rollout outcome.
 """
 
 from __future__ import annotations
@@ -27,6 +42,44 @@ from roboeval.policies.base import Policy
 
 CubeStateFn = Callable[[gym.Env[Any, Any]], npt.NDArray[np.float64]]
 """Function that pulls the 7-element cube qpos from a live env."""
+
+_ACTION_BOUND_LIMIT: float = 100.0
+"""Sanity ceiling on ``|action|`` per dim.
+
+The env's action space is ``Box(-1, 1)``; LeRobot's postprocessor can
+output values slightly outside that range pre-clipping. ``100.0`` is
+several orders of magnitude above any plausible postprocessed action and
+trips only on numerical blowup (NaN/Inf via abs > limit, or unscaled
+joint deltas).
+"""
+
+
+def _assert_action_finite_and_bounded(
+    action: npt.NDArray[np.float32], step_idx: int
+) -> None:
+    """Raise if the action contains NaN/Inf or exceeds the sanity ceiling.
+
+    Args:
+        action: 1-D float32 action returned by the policy adapter.
+        step_idx: 0-based step index where the bad action appeared, for
+            inclusion in the error message.
+
+    Raises:
+        RuntimeError: If any element is NaN/Inf or has absolute value
+            >= ``_ACTION_BOUND_LIMIT``.
+    """
+    if not np.all(np.isfinite(action)):
+        raise RuntimeError(
+            f"policy returned non-finite action at step {step_idx}: "
+            f"action={action!r}"
+        )
+    max_abs = float(np.abs(action).max())
+    if max_abs >= _ACTION_BOUND_LIMIT:
+        raise RuntimeError(
+            f"policy returned out-of-bound action at step {step_idx}: "
+            f"|action|.max()={max_abs:.3g} >= {_ACTION_BOUND_LIMIT} "
+            f"(env action space is Box(-1, 1))"
+        )
 
 
 def seed_everything(seed: int) -> None:
@@ -92,6 +145,7 @@ def run_rollout(
     start_t = time.perf_counter()
     for step_idx in range(max_steps):
         action = policy.select_action(obs)
+        _assert_action_finite_and_bounded(action, step_idx)
         obs, reward, terminated, truncated, info = env.step(action)
         n_steps = step_idx + 1
         max_reward = max(max_reward, int(float(reward)))
