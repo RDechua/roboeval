@@ -21,7 +21,9 @@ def _rollout(seed_group, idx, success, success_custom=False, step=None):
         truncated=not success,
         wall_time_s=1.0,
         final_cube_z=0.1 if success else 0.0,
-        final_cube_xy_dist=0.02,
+        final_cube_x=0.01,
+        final_cube_y=0.0,
+        final_cube_xy_dist=0.01,
     )
 
 

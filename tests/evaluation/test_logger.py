@@ -22,6 +22,8 @@ def _rollout(idx, success):
         truncated=not success,
         wall_time_s=0.1,
         final_cube_z=0.1,
+        final_cube_x=0.0,
+        final_cube_y=0.0,
         final_cube_xy_dist=0.0,
     )
 
