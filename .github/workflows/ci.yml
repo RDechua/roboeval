@@ -21,10 +21,20 @@ jobs:
           python-version: "3.11"
           cache: pip
 
-      - name: Install dev tools
+      - name: Install dev tools and minimal runtime deps
+        # Installs the minimum needed for non-slow tests to collect and
+        # run on clean Ubuntu: ruff/mypy/pytest plus numpy + gymnasium +
+        # omegaconf + pyyaml + wandb (CLI regression test imports it via
+        # wandb_run) + torch (CPU wheel — seed_everything imports it).
+        # NOT installed: lerobot, mujoco, gym_aloha (those are only
+        # exercised by @pytest.mark.slow tests, which CI deselects).
         run: |
           python -m pip install --upgrade pip
-          pip install "ruff>=0.5,<0.6" "mypy>=1.10" "pytest>=8.0"
+          pip install --index-url https://download.pytorch.org/whl/cpu \
+                      "torch>=2.0"
+          pip install "ruff>=0.5,<0.6" "mypy>=1.10" "pytest>=8.0" \
+                      "numpy>=1.26" "gymnasium>=0.29" "omegaconf>=2.3" \
+                      "pyyaml>=6.0" "wandb>=0.16"
 
       - name: Ruff lint
         run: ruff check .
