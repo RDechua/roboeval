@@ -251,7 +251,6 @@ def _cmd_calibrate(
         themselves crash.
     """
     import json
-    import subprocess
     from datetime import UTC, datetime
     from pathlib import Path
 
@@ -349,7 +348,6 @@ def _cmd_calibrate(
         f"`success.xy_tolerance_m` with the values above; then re-run the fast\n"
         f"smoke to confirm mean_tsr_custom converges to mean_tsr_native.\n"
     )
-    del subprocess  # only imported for type clarity; _git_sha handles it
     return 0
 
 
