@@ -1,656 +1,392 @@
-__PRODUCT REQUIREMENTS DOCUMENT__
+# RoboEval — Product Requirements Document
 
-__RoboEval__
+**Author:** Rubeno Dechua
+**Status:** v1.0 — Approved
+**Last Updated:** May 2026
+**Target Role:** Robot Learning Engineer
 
-A Rigorous Evaluation & Failure\-Mode Study of
+> **One-line pitch.** RoboEval is an open-source evaluation harness and study that systematically measures where state-of-the-art imitation learning policies break, classifies failure modes, and demonstrates a residual RL loop that recovers the top-frequency failure — producing a reproducible benchmark, an interactive dashboard, and an arXiv-style writeup ready for submission.
 
-Open\-Source Robot Learning Policies with Residual RL Fine\-Tuning
+---
 
-__Author__
+## 1. Executive Summary
 
-Rubeno Dechua
+Robot learning is transitioning from laboratory demonstrations to production deployments. The dominant paradigm — imitation learning via Behavioral Cloning, ACT, and Diffusion Policy — has achieved impressive task success in controlled conditions. However, the field lacks a rigorous, publicly available study of where these policies systematically fail, how failure modes distribute across policy architectures, and whether lightweight residual RL can recover them.
 
-__Status__
+RoboEval closes that gap. The project delivers:
 
-v1\.0 — Approved
+- **An evaluation harness** that benchmarks multiple pretrained policies in simulation with a single config change
+- **A robustness suite** that quantifies policy degradation under distribution shift, physical perturbation, and visual noise
+- **A failure taxonomy** with six operationally-defined categories, a classifier, and per-policy breakdown
+- **A residual RL study** showing whether PPO-based fine-tuning can recover the highest-frequency failure mode
+- **A public deliverables package** including an interactive dashboard, demo video, MkDocs site, and arXiv-style writeup
 
-__Last Updated__
+**Why this project for Rubeno specifically.** Rubeno spent 8+ months at Physical Intelligence evaluating real robot policies, identifying failure modes, and documenting instructional frameworks — this project is a public, reproducible extension of that exact workflow. It fills the gap between industry experience and open-source portfolio signal that robot learning hiring teams need to see.
 
-May 2026
+---
 
-__Target Role__
+## 2. Problem Statement
 
-Robot Learning Engineer
+### 2.1 The Gap in the Field
 
-__One\-Line Pitch__
+State-of-the-art robot manipulation policies (ACT, Diffusion Policy, π0) are benchmarked primarily on task success rate in nominal conditions. Three critical gaps remain:
 
-RoboEval is an open\-source evaluation harness and study that systematically measures where state\-of\-the\-art imitation learning policies break, classifies failure modes, and demonstrates a residual RL loop that recovers the top\-frequency failure — producing a reproducible benchmark, an interactive dashboard, and an arXiv\-style writeup ready for submission\.
+- No standardised public evaluation harness exists for comparing these policies under consistent conditions.
+- Failure modes are qualitatively described in papers but rarely quantified, classified, or cross-compared across policy architectures.
+- The value of lightweight residual RL on top of pretrained imitation policies is understood in theory but almost no public implementation with measured results exists for newcomers to the field.
 
-# __1\. Executive Summary__
+### 2.2 The Gap for an Early-Career Robot Learning Engineer
 
-Robot learning is transitioning from laboratory demonstrations to production deployments\. The dominant paradigm — imitation learning via Behavioral Cloning, ACT, and Diffusion Policy — has achieved impressive task success in controlled conditions\. However, the field lacks a rigorous, publicly available study of where these policies systematically fail, how failure modes distribute across policy architectures, and whether lightweight residual RL can recover them\.
+New-grad and early-career robot learning candidates typically demonstrate:
 
-RoboEval closes that gap\. The project delivers:
-
-- __An evaluation harness __that benchmarks multiple pretrained policies in simulation with a single config change
-- __A robustness suite __that quantifies policy degradation under distribution shift, physical perturbation, and visual noise
-- __A failure taxonomy __with six operationally\-defined categories, a classifier, and per\-policy breakdown
-- __A residual RL study __showing whether PPO\-based fine\-tuning can recover the highest\-frequency failure mode
-- __A public deliverables package __including an interactive dashboard, demo video, MkDocs site, and arXiv\-style writeup
-
-__Why this project for Rubeno specifically__
-
-Rubeno spent 8\+ months at Physical Intelligence evaluating real robot policies, identifying failure modes, and documenting instructional frameworks — this project is a public, reproducible extension of that exact workflow\. It fills the gap between industry experience and open\-source portfolio signal that robot learning hiring teams need to see\.
-
-# __2\. Problem Statement__
-
-## __2\.1  The Gap in the Field__
-
-State\-of\-the\-art robot manipulation policies \(ACT, Diffusion Policy, π0\) are benchmarked primarily on task success rate in nominal conditions\. Three critical gaps remain:
-
-- No standardised public evaluation harness exists for comparing these policies under consistent conditions\.
-- Failure modes are qualitatively described in papers but rarely quantified, classified, or cross\-compared across policy architectures\.
-- The value of lightweight residual RL on top of pretrained imitation policies is understood in theory but almost no public implementation with measured results exists for newcomers to the field\.
-
-## __2\.2  The Gap for a Candidate__
-
-New\-grad and early\-career robot learning candidates typically demonstrate:
-
-- Toy RL implementations \(CartPole, MuJoCo Ant\) that every CS grad has done
+- Toy RL implementations (CartPole, MuJoCo Ant) that every CS grad has done
 - Course or Kaggle projects with no deployment or reproducibility discipline
 - No public evidence of being able to design an experiment, run it cleanly, and communicate the results
 
-RoboEval is designed to fill all three gaps simultaneously and produce artifacts that map directly to responsibilities listed in Robot Learning Engineer and Autonomy Evaluation Engineer job descriptions\.
+RoboEval is designed to fill all three gaps simultaneously and produce artifacts that map directly to responsibilities listed in Robot Learning Engineer and Autonomy Evaluation Engineer job descriptions.
 
-# __3\. Goals & Non\-Goals__
+---
 
-## __3\.1  Goals__
+## 3. Goals & Non-Goals
 
-1. Build and open\-source a reproducible policy evaluation harness runnable on Apple M1 \(8 GB RAM\) with no GPU required for evaluation\.
-2. Benchmark Policy A \(`lerobot/act_aloha_sim_transfer_cube_human`\) from the LeRobot model zoo under baseline and perturbed conditions\. Build the harness as policy\-agnostic so additional policies \(e\.g\. a community\-trained Diffusion Policy\) can be added in v1\.1 via a single config flag\.
-3. Define, operationalise, and classify at least 6 failure mode categories across ≥150 labelled rollouts\.
-4. Train a residual PPO policy on top of the highest\-frequency failure mode and report ΔTSR \(task success rate improvement\) with ablations\.
-5. Produce a public demo video, interactive Plotly/Dash dashboard, arXiv\-style PDF writeup, and MkDocs documentation site\.
-6. Complete all of the above in 10 weeks on a part\-time schedule \(~15–20 hrs/week\)\.
+### 3.1 Goals
 
-## __3\.2  Non\-Goals__
+1. Build and open-source a reproducible policy evaluation harness runnable on Apple M1 (8 GB RAM) with no GPU required for evaluation.
+2. Benchmark Policy A (`lerobot/act_aloha_sim_transfer_cube_human`) from the LeRobot model zoo under baseline and perturbed conditions. Build the harness as policy-agnostic so additional policies (e.g. a community-trained Diffusion Policy) can be added in v1.1 via a single config flag.
+3. Define, operationalise, and classify at least 6 failure mode categories across ≥150 labelled rollouts.
+4. Train a residual PPO policy on top of the highest-frequency failure mode and report ΔTSR (task success rate improvement) with ablations.
+5. Produce a public demo video, interactive Plotly/Dash dashboard, arXiv-style PDF writeup, and MkDocs documentation site.
+6. Complete all of the above in 10 weeks on a part-time schedule (~15–20 hrs/week).
 
-The following are explicitly out of scope for v1\.0 to protect timeline:
+### 3.2 Non-Goals
+
+The following are explicitly out of scope for v1.0 to protect timeline:
 
 - Training a full policy from scratch — this requires compute we do not have and adds no differentiation over existing work
-- Real\-robot deployment — sim\-only is sufficient and is the standard for eval research
+- Real-robot deployment — sim-only is sufficient and is the standard for eval research
 - CUDA / GPU infrastructure — M1 MPS and Colab Pro overflow handle all compute needs
 - Novel algorithm contributions — this is an empirical study, not a methods paper
-- Comparison to proprietary models \(π0, RT\-2, Helix\) — no public checkpoints available
-- __Cross\-policy comparison in v1\.0 __— no sim\-trained Diffusion Policy checkpoint exists publicly for ALOHA Transfer Cube \(see Section 6\.1\)\. v1\.0 is single\-policy \(ACT\); cross\-policy comparison and the multi\-policy perturbation grid are deferred to v1\.1 as a stretch goal contingent on training Diffusion Policy from scratch on Colab or the appearance of a community checkpoint\.
-- __Multi\-policy perturbation grid __— for the same reason, the perturbation suite in Section 6\.4 runs on ACT only in v1\.0\. This keeps the 10\-week timeline feasible on a single M1 \(see Section 11\)\.
+- Comparison to proprietary models (π0, RT-2, Helix) — no public checkpoints available
+- **Cross-policy comparison in v1.0** — no sim-trained Diffusion Policy checkpoint exists publicly for ALOHA Transfer Cube (see §6.1). v1.0 is single-policy (ACT); cross-policy comparison and the multi-policy perturbation grid are deferred to v1.1 as a stretch goal contingent on training Diffusion Policy from scratch on Colab or the appearance of a community checkpoint.
+- **Multi-policy perturbation grid** — for the same reason, the perturbation suite in §6.4 runs on ACT only in v1.0. This keeps the 10-week timeline feasible on a single M1 (see §11).
 
-# __4\. Target Audience__
+---
 
-## __4\.1  Primary: Hiring Teams at Robot Learning Companies__
+## 4. Target Audience
 
-The project's core external audience is recruiting and engineering teams at companies hiring for Robot Learning Engineer, Autonomy Evaluation Engineer, and ML Research Engineer roles\. Specific targets include:
+### 4.1 Primary — Hiring Teams at Robot Learning Companies
 
-- Physical Intelligence, Skild AI, 1X Technologies, Figure AI, Dexterity, Covariant — manipulation\-focused
-- Boston Dynamics AI Institute, Apptronik, Agility Robotics — humanoid / mobility
-- General Motors Autonomy, Waymo, Cruise Automation — autonomy evaluation adjacent
+The project's core external audience is recruiting and engineering teams at companies hiring for Robot Learning Engineer, Autonomy Evaluation Engineer, and ML Research Engineer roles. Specific targets:
 
-## __4\.2  Secondary: The Robot Learning Research Community__
+- **Manipulation-focused:** Physical Intelligence, Skild AI, 1X Technologies, Figure AI, Dexterity, Covariant
+- **Humanoid / mobility:** Boston Dynamics AI Institute, Apptronik, Agility Robotics
+- **Autonomy evaluation adjacent:** General Motors Autonomy, Waymo, Cruise Automation
 
-Open\-sourcing the harness and study benefits researchers who want a plug\-and\-play evaluation baseline\. GitHub stars, forks, citations, and community issues all add long\-term professional signal\.
+### 4.2 Secondary — The Robot Learning Research Community
 
-## __4\.3  Tertiary: Rubeno Himself__
+Open-sourcing the harness and study benefits researchers who want a plug-and-play evaluation baseline. GitHub stars, forks, citations, and community issues all add long-term professional signal.
 
-The project functions as structured upskilling\. Every phase introduces a concept that will come up in technical interviews: reward design, RL training loops, statistical experimental design, and research communication\.
+### 4.3 Tertiary — The Author
 
-# __5\. Technical Architecture__
+The project functions as structured upskilling. Every phase introduces a concept that will come up in technical interviews: reward design, RL training loops, statistical experimental design, and research communication.
 
-## __5\.1  System Overview__
+---
 
-RoboEval is structured as a Python library with four major components: Environment Layer, Policy Layer, Evaluation Engine, and Analysis & Reporting Layer\. These are orchestrated by Hydra configuration files and logged to Weights & Biases\.
+## 5. Technical Architecture
 
-__Architecture Principle__
+### 5.1 System Overview
 
-Every experiment must be fully reproducible from a single YAML config file\. Given a config, the eval harness produces identical results \(modulo fixed random seed\) with one command: python evaluate\.py config=baseline/act\_nominal\.yaml
+RoboEval is structured as a Python library with four major runtime components — **Environment Layer**, **Policy Layer**, **Evaluation Engine**, and **Analysis & Reporting Layer** — orchestrated by Hydra configuration files and logged to Weights & Biases.
 
-## __5\.2  Repository Structure__
+```mermaid
+flowchart LR
+    cfg[Hydra Config<br/>configs/**/*.yaml]
+    cli[CLI Entrypoint<br/>roboeval.cli]
 
+    subgraph harness[RoboEval Library — roboeval/]
+      pol[Policy Layer<br/>policies/<br/>act_loader, base]
+      env[Environment Layer<br/>envs/<br/>aloha, success]
+      ev[Evaluation Engine<br/>evaluation/<br/>rollout, loop, types]
+      cal[Calibration<br/>evaluation/calibration]
+      tax[Failure Taxonomy<br/>taxonomy/]
+      res[Residual RL Trainer<br/>residual/]
+      log[W&B Logger<br/>evaluation/logger]
+    end
+
+    cfg --> cli
+    cli --> ev
+    ev --> pol
+    ev --> env
+    ev --> log
+    ev -->|RolloutResult JSON| tax
+    log -->|run/rollout schema| wandb[(W&B Cloud)]
+    tax -->|labels JSON| dash[Plotly/Dash<br/>analysis/]
+    wandb --> dash
+    pol -.frozen base.-> res
+    res -.residual policy.-> pol
+    cal -.frozen target_xy.-> env
+```
+
+**Architecture Principle.** Every experiment must be fully reproducible from a single YAML config file. Given a config, the eval harness produces identical results (modulo fixed random seed) with one command:
+
+```bash
+roboeval evaluate --config configs/baseline/act_nominal.yaml
+```
+
+### 5.2 Repository Structure
+
+```
 roboeval/
-├── configs/              \# Hydra YAML configs per experiment
-│   ├── baseline/         \# Nominal eval configs \(one per policy\)
-│   ├── perturbation/     \# Robustness suite configs
-│   └── residual\_rl/      \# PPO fine\-tuning configs
-├── roboeval/             \# Core library \(typed Python\)
-│   ├── envs/             \# Environment wrappers \(Gymnasium API\)
-│   ├── policies/         \# Policy loader \+ inference wrappers
-│   ├── evaluation/       \# Rollout engine, metric collectors
-│   ├── taxonomy/         \# Failure mode classifier
-│   └── residual/         \# Residual RL trainer \(SB3 PPO\)
-├── analysis/             \# Notebooks \+ Plotly dashboard
-├── docs/                 \# MkDocs source
-├── tests/                \# pytest unit \+ integration tests
-├── \.github/workflows/    \# CI: lint, type\-check, smoke\-test
-├── pyproject\.toml        \# Ruff, mypy, dependency config
-└── README\.md
+├── configs/              # Hydra YAML configs per experiment
+│   ├── baseline/         # Nominal eval configs (one per policy)
+│   ├── perturbation/     # Robustness suite configs
+│   └── residual_rl/      # PPO fine-tuning configs
+├── roboeval/             # Core library (typed Python)
+│   ├── envs/             # Environment wrappers (Gymnasium API)
+│   ├── policies/         # Policy loader + inference wrappers
+│   ├── evaluation/       # Rollout engine, metric collectors, logger
+│   ├── taxonomy/         # Failure mode classifier
+│   └── residual/         # Residual RL trainer (SB3 PPO)
+├── analysis/             # Notebooks + Plotly dashboard
+├── data/                 # Frozen artifacts (see §5.4)
+│   ├── calibration/      # Calibrated success-detector thresholds
+│   ├── runs/             # Per-run rollout artifacts (jsonl)
+│   └── taxonomy/         # Auto + manual labels per run
+├── docs/                 # PRD, research log, MkDocs source
+├── tests/                # pytest unit + integration tests
+├── .github/workflows/    # CI: lint, type-check, smoke-test
+├── pyproject.toml        # Ruff, mypy, dependency config
+└── README.md
+```
 
-## __5\.3  Technology Stack__
+### 5.3 Technology Stack
 
-__Category__
+| Category | Tool / Library | Purpose | M1 Compatible |
+|---|---|---|---|
+| Simulation | MuJoCo 3 + gym-aloha | Primary manipulation env | ✓ CPU/MPS |
+| Simulation (fallback) | PyBullet | Lightweight alternative env | ✓ CPU |
+| Policies | LeRobot (HuggingFace) | ACT & Diffusion Policy checkpoints | ✓ MPS inference |
+| RL Training | Stable-Baselines3 | PPO residual policy training | ✓ MPS |
+| RL Training | Gymnasium | Environment wrapper API | ✓ |
+| Config Mgmt | Hydra | Reproducible experiment configs | ✓ |
+| Logging | Weights & Biases (free tier) | Run tracking, plots, artifacts | ✓ (cloud) |
+| Visualization | Plotly + Dash | Interactive eval dashboard | ✓ |
+| Viz (static) | Seaborn + Matplotlib | Publication-quality plots | ✓ |
+| Code Quality | Ruff + mypy + pre-commit | Linting, typing, git hooks | ✓ |
+| CI/CD | GitHub Actions | Auto-test on push | ✓ (cloud) |
+| Docs | MkDocs + mkdocstrings | Auto-generated API docs site | ✓ |
+| GPU Overflow | Google Colab Pro (~$10/mo) | Larger inference, RL training | N/A — cloud |
 
-__Tool / Library__
+### 5.4 Data & Artifact Management
 
-__Purpose__
+Every experiment produces artifacts on three tiers; what each is, where it lives, and how it is versioned is explicit:
 
-__M1 Compatible__
+| Artifact | Location | Versioning | Retention |
+|---|---|---|---|
+| **Per-rollout results** (observation summary, actions, reward trace, success flags, perturbation params) | `data/runs/{run_sha}/rollouts.jsonl` | Tagged with `git_sha`, `wandb_run_id`, `config_hash` | Kept through v1.0; pruned to top-50 representative rollouts at v1.1 |
+| **Aggregated run summary** (TSR, TTS, σ across seeds, per-condition table) | W&B run + `data/runs/{run_sha}/summary.json` | W&B run ID is the canonical identifier | Kept indefinitely (W&B free tier) |
+| **Calibrated success-detector thresholds** | `data/calibration/transfer_cube_target_xy.json` | Frozen; references the calibrating run_sha | Kept indefinitely |
+| **Taxonomy labels** | `data/taxonomy/{auto,manual,relabel_sample}_labels_{run_sha}.json` | Frozen per run_sha; manual labels written ≥7d after auto labels (see §7.3) | Kept indefinitely |
+| **Trained residual policies** | `data/residual/{run_sha}/ppo_residual.zip` + W&B artifact | W&B artifact version + run_sha | Top-3 by ΔTSR kept; rest pruned |
+| **Plots & figures for writeup** | `analysis/figures/{topic}_{run_sha}.svg` | Regenerated from `analysis/notebooks/*.ipynb` | Kept; referenced in PDF & MkDocs |
 
-Simulation
+**Reproducibility contract.** Any artifact in `data/` is uniquely traceable to (a) the git SHA of the code that produced it, (b) the Hydra config hash, and (c) the W&B run ID. All three are written into the artifact's JSON header. No artifact is overwritten in-place; a new run produces a new `run_sha` directory.
 
-MuJoCo 3 \+ gym\-aloha
+---
 
-Primary manipulation env
+## 6. Evaluation Design
 
-✓ CPU/MPS
+### 6.1 Policies Under Study
 
-Simulation
+v1.0 benchmarks a single pretrained policy, selected for public availability of a sim-trained checkpoint compatible with the MuJoCo gym-aloha Transfer Cube task:
 
-PyBullet \(fallback\)
+- **Policy A — ACT (Action Chunking with Transformers):** HuggingFace ID `lerobot/act_aloha_sim_transfer_cube_human`. Transformer-based; outputs action chunks; reports ~83% task success rate at 80k training steps on the source task. Verified to exist on the HuggingFace Hub (May 2026).
 
-Lightweight alternative env
+Diffusion Policy was originally planned as Policies B and C. A May 2026 audit of the public `lerobot/*` HuggingFace organisation confirmed that **no sim-trained Diffusion Policy checkpoint exists for ALOHA Transfer Cube**: only `lerobot/diffusion_pusht` and `lerobot/diffusion_pusht_keypoints` are published, both for the PushT task. Training Diffusion Policy from scratch on the `lerobot/aloha_sim_transfer_cube_human` dataset is out of scope for v1.0 (see §3.2) and is deferred to v1.1 as a stretch goal.
 
-✓ CPU
+If the ACT checkpoint proves incompatible with M1 MPS inference, a CPU-only fallback will substitute. Colab Pro is reserved for inference runs exceeding 4 GB VRAM.
 
-Policies
+### 6.2 Evaluation Tasks
 
-LeRobot \(HuggingFace\)
+All evaluations use the gym-aloha manipulation environment (part of the LeRobot ecosystem), which runs on CPU without CUDA:
 
-ACT & Diffusion Policy checkpoints
+- **Transfer Cube Task** — Move a cube from one receptacle to another. Standard, well-understood baseline task.
+- **Insertion Task (stretch goal)** — Insert a peg into a socket. Higher precision requirement, exposes more failure modes.
 
-✓ MPS inference
+**Task success criterion (Transfer Cube).** v1.0 tracks two success signals side-by-side and logs both to W&B.
 
-RL Training
+- **Primary TSR (`mean_tsr`)** uses gym-aloha's native `info["is_success"]` flag, which is set when the dm_control task reward reaches its maximum value of 4 — operationally, "left gripper holds the cube AND the cube is not touching the table" (see `gym_aloha/tasks/sim.py::TransferCubeTask.get_reward`). This is the signal that the `lerobot/act_aloha_sim_transfer_cube_human` model card uses to report its ~83% TSR figure; adopting it as primary preserves direct comparability with the checkpoint's published number.
 
-Stable\-Baselines3
+- **Secondary TSR (`mean_tsr_custom`)** uses a PRD-defined geometric criterion implemented in `roboeval.envs.success.TransferCubeSuccessDetector`: cube centre-of-mass z-position exceeds `z_threshold_m` **and** xy-position lies within a half-width `xy_tolerance_m` box around the target receptacle centre, sustained for `dwell_steps` consecutive simulation steps. Defaults `(z_threshold_m, xy_tolerance_m, dwell_steps) = (0.05 m, 0.05 m, 5)` and `target_xy = (0.0, 0.0)` were Week 2 placeholders; **calibration completed in Week 2.5** (50 nominal rollouts on M1 MPS) produced `target_xy = (-0.01835, 0.50576)` and `xy_tolerance_m = 0.02185` (90th-percentile endpoint distance from centroid). Thresholds are now frozen at `data/calibration/transfer_cube_target_xy.json` and used throughout the perturbation suite (§6.4), where the contact-based primary signal may become unreliable under physical perturbation (e.g. a held but misplaced cube).
 
-PPO residual policy training
+### 6.3 Metrics
 
-✓ MPS
+| Metric | Definition | Source | Target |
+|---|---|---|---|
+| Task Success Rate (TSR) | % rollouts completing task end-to-end | Custom eval loop | Reported mean ± std |
+| Time-to-Success (TTS) | Median steps to task completion | Rollout logs | Reported |
+| Perturbation Recovery Rate | TSR after mid-rollout object shift | Eval harness | > baseline TSR × 0.5 |
+| Failure Mode Distribution | % rollouts per failure category | Taxonomy classifier | ≥5 categories populated |
+| Residual RL Delta (ΔTSR) | TSR improvement over frozen base policy | Ablation table | > +10% on target failure |
+| Eval Reproducibility (σ) | Std dev across 3 seed groups, ≥50 rollouts each | Eval harness | σ < 7% |
 
-RL Training
+**Statistical bar.** All metrics are reported as mean ± standard deviation across 3 random seeds and ≥50 rollouts per condition. This is the minimum bar for results to be credible in a research context. The σ < 7% target on TSR reproducibility is set above the irreducible per-seed-group Bernoulli SE of ~5.7% at p ≈ 0.8 and N = 50; tightening the bar would require N ≥ 100 per seed, which doubles compute without commensurate insight.
 
-Gymnasium
+### 6.4 Robustness Perturbation Suite
 
-Environment wrapper API
+The perturbation suite stresses **Policy A (ACT) only** in v1.0 (see §3.2 for rationale and v1.1 expansion plan) along four axes. Each axis defines a range of perturbation intensities; axes are tested **independently** (one perturbation per rollout) to keep the failure attribution clean. Multi-axis crossing is a v1.1 stretch.
 
-✓
+| Axis | Perturbation | Intensities |
+|---|---|---|
+| Spatial | Object start position shifted from nominal | ±1 cm, ±3 cm, ±5 cm |
+| Visual | Lighting intensity variation; distractor object | ±30%, ±60%; distractor present/absent |
+| Dynamic | Object pushed 2 cm mid-rollout at fixed nominal-completion fraction | at 25%, 50%, 75% of nominal completion |
+| Temporal | Action execution delayed (simulates latency) | 1, 3, 5 steps |
 
-Config Mgmt
+Each (axis, intensity) cell runs 3 seeds × 50 rollouts = 150 rollouts. Total perturbation suite budget: ~1,800 rollouts (4 axes × ~3 intensities × 150).
 
-Hydra
+---
 
-Reproducible experiment configs
+## 7. Failure Mode Taxonomy
 
-✓
+### 7.1 Design Principles
 
-Logging
+The taxonomy is designed to be operationally unambiguous: any two labellers should agree on the failure category for a given rollout. Each category has a precise definition, a concrete example, and a measurable detection rule.
 
-Weights & Biases \(free tier\)
+### 7.2 Taxonomy
 
-Run tracking, plots, artifacts
+| Category | Definition | Detection Rule (operationally measurable) |
+|---|---|---|
+| Grasp Failure | Robot contacts object but drops or misses | Finger-object contact at any step **and** terminal cube z < 0.02 m |
+| Approach Failure | Robot reaches wrong position/orientation before contact | End-effector terminal pose error > 5 cm from cube COM **and** no contact in episode |
+| Recovery Failure | Policy cannot correct after perturbation | Perturbation applied (any axis) **and** terminal TSR = 0 **and** action variance post-perturbation < 0.1 |
+| Action Oscillation | Policy outputs rapidly alternating contradictory actions | Action sign-flip rate > 5 per 10-step window for >5 steps |
+| Timeout | Task not completed within step budget (default **400 steps** for Transfer Cube; tunable per task in Hydra config) | Episode hits step cap **and** no progress (cube displacement < 1 cm) in last 50 steps |
+| Visual Confusion | Policy error correlates with visual change (lighting, distractor) | TSR drops > 30% under changed visual condition **and** TSR ≥ 70% in nominal |
 
-✓ \(cloud\)
+### 7.3 Labelling Protocol
 
-Visualization
+1. Run evaluation harness; save full rollout trajectory (observations, actions, rewards) per episode.
+2. Auto-classify rollouts into failure categories using a rule-based classifier from the detection rules above.
+3. Manually review a stratified sample of 30 rollouts (5 per category) to validate classifier accuracy.
+4. Validate the rule-based classifier via a single-labeller **blinded self-relabel**: export a stratified sample of 30 rollouts (5 per category) with auto-labels redacted, wait ≥7 days for a memory-wash, then manually re-label the sample blind to the auto-labels. Compute **Cohen's κ** between auto and manual labels. Target **κ > 0.6** (substantial agreement per Landis & Koch 1977; the standard for single-labeller robotics evals where wider single-labeller CIs preclude the 0.7 threshold used in multi-labeller settings). Blinding is enforced by storing auto-labels in `data/taxonomy/auto_labels_{run_sha}.json` (frozen) and the redacted sample in `data/taxonomy/relabel_sample_{run_sha}.json`; the manual labels are written to `data/taxonomy/manual_labels_{run_sha}.json` ≥7 days later (enforced via the `data/taxonomy/relabel_unlock_at` timestamp file the labelling script reads).
+5. Produce per-policy failure distribution heatmap.
 
-Plotly \+ Dash
+**Edge cases.** Rollouts that match zero categories or multiple categories are flagged into a `needs_review` bucket and reviewed manually. The bucket size is reported alongside the heatmap.
 
-Interactive eval dashboard
+---
 
-✓
+## 8. Residual RL Design
 
-Viz \(static\)
+### 8.1 Rationale
 
-Seaborn \+ Matplotlib
+Residual RL trains a small correction policy on top of a frozen base policy. Rather than replacing the base policy, it learns to predict the delta between what the base policy does and what should be done in failure-prone states. This is much cheaper to train than a policy from scratch and maps directly to real-world workflows where pretrained policies are valuable but imperfect.
 
-Publication\-quality plots
+**Why Residual RL and not Full RL from scratch?** Full RL from scratch on manipulation tasks requires millions of environment steps and significant GPU time — not feasible on M1 8 GB. Residual RL operates in a narrow region of the action space near the base policy, converges faster, and is the approach actually used by robot learning teams to iterate on deployed policies. This choice demonstrates research taste, not hardware limitation.
 
-✓
+### 8.2 Implementation
 
-Code Quality
+- **Base policy** — Frozen ACT checkpoint (Policy A); selected for the highest failure rate in the most targeted failure category as identified in Phase 3.
+- **Residual policy** — Small MLP, 2 hidden layers × 256 units, GELU activations. **Input:** concatenation of (current observation features from the ACT encoder, base action chunk). **Output:** same dimension as the action space (`gym-aloha` action dim = 14 for bimanual). Trained with PPO via Stable-Baselines3.
+- **Reward signal** — Sparse success reward (+1 on `is_success`, 0 otherwise) + shaped distance-to-goal term (negative L2 distance of cube COM to target receptacle), ablated separately.
+- **Training budget** — 500k environment steps. Estimated wall-clock revised in §10.2.1; final estimate to be set after Week 6 baseline.
+- **Action composition** — Final action `a = a_base + α × a_residual`, where `α` is a **learnable scalar** initialised at 0.1 with sigmoid clipping to [0, 1]. The clipping ensures the residual cannot fully replace the base.
 
-Ruff \+ mypy \+ pre\-commit
+### 8.3 Ablation Plan
 
-Linting, typing, git hooks
+Three conditions are reported. Each condition is run with **3 seeds × 50 rollouts** on the target failure mode (matching the §6.3 statistical bar):
 
-✓
+| Condition | Description |
+|---|---|
+| A — Frozen base only | ACT policy, no residual (baseline) |
+| B — Residual RL, sparse reward | PPO residual with binary success signal |
+| C — Residual RL, shaped reward | PPO residual with distance-to-goal shaping |
 
-CI/CD
+**Reporting.** Per-condition TSR is reported as mean ± std. ΔTSR is the difference of means; significance is tested with a one-sided Welch's t-test (α = 0.05) across the 3-seed group means. A positive ΔTSR > 10% on the target failure mode is the success criterion. A negative or null result is still reported with analysis — honest null results are valued in research.
 
-GitHub Actions
+---
 
-Auto\-test on push
+## 9. Deliverables
 
-✓ \(cloud\)
+| Deliverable | Description | Audience Signal |
+|---|---|---|
+| GitHub Repository | Typed Python codebase, CI, full README, MIT license, one-command eval | Robot learning / MLOps teams |
+| Evaluation Harness | Pluggable harness: swap policy or env with single config change | Infra / research engineers |
+| Benchmark Report (PDF) | arXiv-style writeup: method, results, ablations, limitations | Research-leaning hiring managers |
+| Interactive Dashboard | Plotly/Dash web app: filter by policy, metric, failure mode | Product / applied ML teams |
+| Demo Video (90s) | Screen-recorded rollouts showing key failure modes + recovery delta | All recruiters — top of funnel |
+| MkDocs Site | Auto-generated API docs, hosted on GitHub Pages | Engineering due-diligence |
+| W&B Report | Public Weights & Biases run dashboard with all metrics | ML practitioners |
 
-Docs
-
-MkDocs \+ mkdocstrings
-
-Auto\-generated API docs site
-
-✓
-
-GPU Overflow
-
-Google Colab Pro \(~$10/mo\)
-
-Larger inference, RL training
-
-N/A — cloud
-
-# __6\. Evaluation Design__
-
-## __6\.1  Policies Under Study__
-
-v1\.0 benchmarks a single pretrained policy, selected for public availability of a sim\-trained checkpoint compatible with the MuJoCo gym\-aloha Transfer Cube task:
-
-- __Policy A — ACT \(Action Chunking with Transformers\): __HuggingFace ID `lerobot/act_aloha_sim_transfer_cube_human`\. Transformer\-based; outputs action chunks; reports ~83% task success rate at 80k training steps on the source task\. Verified to exist on the HuggingFace Hub \(May 2026\)\.
-
-Diffusion Policy was originally planned as Policies B and C\. A May 2026 audit of the public `lerobot/*` HuggingFace organisation confirmed that __no sim\-trained Diffusion Policy checkpoint exists for ALOHA Transfer Cube__: only `lerobot/diffusion_pusht` and `lerobot/diffusion_pusht_keypoints` are published, both for the PushT task\. Training Diffusion Policy from scratch on the `lerobot/aloha_sim_transfer_cube_human` dataset is out of scope for v1\.0 \(see Section 3\.2\) and is deferred to v1\.1 as a stretch goal\.
-
-If the ACT checkpoint proves incompatible with M1 MPS inference, a CPU\-only fallback will substitute\. Colab Pro is reserved for inference runs exceeding 4 GB VRAM\.
-
-## __6\.2  Evaluation Tasks__
-
-All evaluations use the gym\-aloha manipulation environment \(part of the LeRobot ecosystem\), which runs on CPU without CUDA:
-
-- __Transfer Cube Task: __Move a cube from one receptacle to another — standard, well\-understood baseline task
-- __Insertion Task \(stretch goal\): __Insert a peg into a socket — higher precision requirement, exposes more failure modes
-
-__Task success criterion \(Transfer Cube\):__ v1\.0 tracks two success signals side\-by\-side and logs both to W&B\.
-
-__Primary TSR \(`mean_tsr`\)__ uses gym\-aloha's native `info["is_success"]` flag, which is set when the dm\_control task reward reaches its maximum value of 4 — operationally, "left gripper holds the cube AND the cube is not touching the table" \(see `gym_aloha/tasks/sim.py::TransferCubeTask.get_reward`\)\. This is the signal that the `lerobot/act_aloha_sim_transfer_cube_human` model card uses to report its ~83% TSR figure; adopting it as primary preserves direct comparability with the checkpoint's published number and is what we compare across all downstream perturbation conditions\.
-
-__Secondary TSR \(`mean_tsr_custom`\)__ uses a PRD\-defined geometric criterion implemented in `roboeval.envs.success.TransferCubeSuccessDetector`: cube centre\-of\-mass z\-position exceeds `z_threshold_m` __and__ xy\-position lies within a half\-width `xy_tolerance_m` box around the target receptacle centre, sustained for `dwell_steps` consecutive simulation steps\. Defaults `(z_threshold_m, xy_tolerance_m, dwell_steps) = (0.05 m, 0.05 m, 5)` and `target_xy = (0.0, 0.0)` are Week 2 placeholders; the calibration target is to tune them on the ACT nominal run so that `mean_tsr_custom ≈ mean_tsr` on nominal conditions\. Once tuned, the thresholds are frozen for all subsequent experiments and the custom signal is reported throughout the perturbation suite \(Section 6\.4\) where the contact\-based primary signal may become unreliable under physical perturbation \(e\.g\. a held but misplaced cube\)\.
-
-## __6\.3  Metrics__
-
-__Metric__
-
-__Definition__
-
-__Tool / Source__
-
-__Target__
-
-Task Success Rate \(TSR\)
-
-% rollouts completing task end\-to\-end
-
-Custom eval loop
-
-Reported ± std
-
-Time\-to\-Success \(TTS\)
-
-Median steps to task completion
-
-Rollout logs
-
-Reported
-
-Perturbation Recovery Rate
-
-TSR after mid\-rollout object shift
-
-Eval harness
-
-> baseline TSR × 0\.5
-
-Failure Mode Distribution
-
-% rollouts per failure category
-
-Taxonomy classifier
-
-≥5 categories
-
-Residual RL Delta \(ΔTSR\)
-
-TSR improvement over frozen base policy
-
-Ablation table
-
-> \+10% on target failure
-
-Eval Reproducibility \(σ\)
-
-Std dev across 3 seed groups, each with ≥50 rollouts
-
-Eval harness
-
-σ < 7%
-
-*All metrics are reported as mean ± standard deviation across 3 random seeds and ≥50 rollouts per condition\. This is the minimum bar for results to be credible in a research context\. The σ < 7% target on TSR reproducibility is set above the irreducible per\-seed\-group Bernoulli SE of ~5\.7% at p ≈ 0\.8 and N = 50; tightening the bar would require N ≥ 100 per seed, which doubles compute without commensurate insight\.*
-
-## __6\.4  Robustness Perturbation Suite__
-
-The perturbation suite stresses __Policy A \(ACT\) only__ in v1\.0 \(see Section 3\.2 for the rationale and v1\.1 expansion plan\) along four axes\. Each axis defines a range of perturbation intensities and reports TSR as a function of intensity — producing degradation curves rather than single\-point measurements:
-
-- __Spatial perturbation: __Object start position shifted ±1cm, ±3cm, ±5cm from nominal
-- __Visual perturbation: __Lighting intensity varied ±30%, ±60%; distractor object added to scene
-- __Dynamic perturbation: __Object pushed 2cm mid\-rollout at step 25%, 50%, 75% of nominal completion
-- __Temporal perturbation: __Action execution delayed by 1, 3, 5 steps \(simulates real\-world latency\)
-
-# __7\. Failure Mode Taxonomy__
-
-## __7\.1  Design Principles__
-
-The taxonomy is designed to be operationally unambiguous: any two labellers should agree on the failure category for a given rollout\. Each category has a precise definition, a concrete example, and a measurable detection rule\.
-
-## __7\.2  Taxonomy__
-
-__Category__
-
-__Definition__
-
-__Example__
-
-Grasp Failure
-
-Robot contacts object but drops or misses
-
-Finger collision causes object to slide
-
-Approach Failure
-
-Robot reaches wrong position/orientation before contact
-
-End\-effector overshoots target by >5cm
-
-Recovery Failure
-
-Policy cannot correct after perturbation
-
-Object shifted 3cm — policy ignores and continues old trajectory
-
-Action Oscillation
-
-Policy outputs rapidly alternating contradictory actions
-
-End\-effector jitters in place for >5 steps
-
-Timeout
-
-Task not completed within step budget \(default __400 steps__ for Transfer Cube; tunable per task in Hydra config\)
-
-Policy plateaus with no progress for 50\+ steps
-
-Visual Confusion
-
-Policy error correlates with visual change \(lighting, distractor\)
-
-Success drops >30% under changed lighting
-
-## __7\.3  Labelling Protocol__
-
-1. Run evaluation harness; save full rollout trajectory \(observations, actions, rewards\) per episode
-2. Auto\-classify rollouts into failure categories using a rule\-based classifier \(threshold on position error, action variance, step count\)
-3. Manually review a stratified sample of 30 rollouts \(5 per category\) to validate classifier accuracy
-4. Validate the rule\-based classifier via a single\-labeller __blinded self\-relabel__: export a stratified sample of 30 rollouts \(5 per category\) with auto\-labels redacted, wait ≥7 days for a memory\-wash, then manually re\-label the sample blind to the auto\-labels\. Compute __Cohen's κ__ between auto and manual labels\. Target __κ > 0\.6__ \(substantial agreement per Landis & Koch 1977; the standard for single\-labeller robotics evals where wider single\-labeller CIs preclude the 0\.7 threshold used in multi\-labeller settings\)\. Blinding is enforced by storing auto\-labels in `data/taxonomy/auto_labels_${RUN_SHA}.json` \(frozen\) and the redacted sample in `data/taxonomy/relabel_sample_${RUN_SHA}.json`; the manual labels are written to `data/taxonomy/manual_labels_${RUN_SHA}.json` ≥7 days later \(enforced via the `data/taxonomy/relabel_unlock_at` timestamp file the labelling script reads\)\.
-5. Produce per\-policy failure distribution heatmap
-
-# __8\. Residual RL Design__
-
-## __8\.1  Rationale__
-
-Residual RL trains a small correction policy on top of a frozen base policy\. Rather than replacing the base policy, it learns to predict the delta between what the base policy does and what should be done in failure\-prone states\. This is much cheaper to train than a policy from scratch and maps directly to real\-world workflows where pretrained policies are valuable but imperfect\.
-
-__Why Residual RL and not Full RL from scratch?__
-
-Full RL from scratch on manipulation tasks requires millions of environment steps and significant GPU time — not feasible on M1 8 GB\. Residual RL operates in a narrow region of the action space near the base policy, converges faster, and is the approach actually used by robot learning teams to iterate on deployed policies\. This choice demonstrates research taste, not hardware limitation\.
-
-## __8\.2  Implementation__
-
-- __Base policy: __Frozen ACT checkpoint \(Policy A\) — highest failure rate in the most targeted failure category
-- __Residual policy: __Small MLP \(2 hidden layers, 256 units\) trained with PPO via Stable\-Baselines3
-- __Reward signal: __Sparse success reward \+ shaped distance\-to\-goal term \(ablated separately\)
-- __Training budget: __500k environment steps \(feasible in ~4 hours on M1 CPU / 1 hour on Colab\)
-- __Action composition: __Final action = base\_action \+ α × residual\_action, where α is a learnable scalar
-
-## __8\.3  Ablation Plan__
-
-Three conditions are reported to make the study credible:
-
-- __Condition A — Frozen base only: __ACT policy, no residual \(baseline\)
-- __Condition B — Residual RL \(sparse reward\): __PPO residual with binary success signal
-- __Condition C — Residual RL \(shaped reward\): __PPO residual with distance\-to\-goal shaping
-
-*ΔTSR = TSR\(Condition B or C\) − TSR\(Condition A\)\. A positive ΔTSR > 10% on the target failure mode is the success criterion\. A negative or null result is still reported with analysis — honest null results are valued in research\.*
-
-# __9\. Deliverables__
-
-__Deliverable__
-
-__Description__
-
-__Audience Signal__
-
-GitHub Repository
-
-Typed Python codebase, CI, full README, MIT license, one\-command eval
-
-Robot learning / MLOps teams
-
-Evaluation Harness
-
-Pluggable harness: swap policy or env with single config change
-
-Infra / research engineers
-
-Benchmark Report \(PDF\)
-
-arXiv\-style writeup: method, results, ablations, limitations
-
-Research\-leaning hiring managers
-
-Interactive Dashboard
-
-Plotly/Dash web app: filter by policy, metric, failure mode
-
-Product / applied ML teams
-
-Demo Video \(90s\)
-
-Screen\-recorded rollouts showing key failure modes \+ recovery delta
-
-All recruiters — top of funnel
-
-MkDocs Site
-
-Auto\-generated API docs, hosted on GitHub Pages
-
-Engineering due\-diligence
-
-W&B Report
-
-Public Weights & Biases run dashboard with all metrics
-
-ML practitioners
-
-## __9\.1  Industry\-Standard Quality Checklist__
+### 9.1 Industry-Standard Quality Checklist
 
 Every deliverable must pass the following before public release:
 
-- GitHub repository: zero lint errors \(Ruff\), zero mypy type errors, CI passing on push, >70% test coverage, README with one\-command eval instructions
-- Writeup: methods section reproducible from description alone; results section includes uncertainty estimates; limitations section present and honest
-- Dashboard: loads in <3 seconds; mobile\-responsive; all plots have axis labels, units, and titles
-- Demo video: narrated; failure modes visually annotated; ≤90 seconds; 1080p minimum
-- MkDocs site: all public functions documented; quickstart example runs without modification
-
-# __10\. Project Plan__
-
-## __10\.1  Phase Overview__
-
-__Phase__
-
-__Name__
-
-__Key Deliverables__
-
-__Duration__
-
-1
-
-__Foundation & Environment Setup__
-
-Repo scaffold, env verified, CI passing
-
-Week 1
-
-2
-
-__Baseline Policy Evaluation__
-
-Baseline metrics on Policy A \(ACT\); policy\-agnostic harness v1
-
-Weeks 2–3
-
-3
-
-__Robustness & Failure Mode Study__
-
-Perturbation suite, failure taxonomy, ablation plots
-
-Weeks 4–5
-
-4
-
-__Residual RL Fine\-tuning__
-
-Trained residual policy, delta metrics, ablation
-
-Weeks 6–7
-
-5
-
-__Dashboard & Writeup__
-
-Plotly dashboard, blog post draft, demo video
-
-Week 8
-
-6
-
-__Polish & Launch__
-
-Peer review, README, arXiv\-style PDF, public release
-
-Weeks 9–10
-
-## __10\.2  Week\-by\-Week Schedule__
-
-Based on 15–20 focused hours per week, executable alongside part\-time or full\-time work:
-
-__Wk__
-
-__Phase__
-
-__Tasks__
-
-__Done When…__
-
-1
-
-Setup
-
-Repo scaffold, CI, env install, smoke\-test policy rollout
-
-First rollout renders without crash
-
-2
-
-Eval v1
-
-Baseline TSR on Policy A \(ACT\), 50 rollouts, log to W&B
-
-W&B dashboard showing TSR ± std
-
-3
-
-Eval v1
-
-Generalise harness to policy\-agnostic loader \(ready for v1\.1 DP\); expand ACT baseline to 3 seeds × 50 rollouts × nominal conditions
-
-Harness loads any LeRobot policy via single config flag; ACT baseline TSR ± std logged to W&B
-
-4
-
-Robustness
-
-Perturbation suite \(ACT only\): object shift, lighting, distractor, action delay
-
-Perturbation TSR table complete for Policy A
-
-5
-
-Failure Study
-
-Failure taxonomy: label 150\+ rollouts, build classifier, plot distribution
-
-Taxonomy heatmap \+ per\-policy breakdown
-
-6
-
-Residual RL
-
-PPO residual policy setup; train on top\-1 failure mode in sim
-
-Training curve visible in W&B
-
-7
-
-Residual RL
-
-Ablation: residual vs\. frozen baseline; compute ΔTSR
-
-Ablation table with ≥3 conditions
-
-8
-
-Comms
-
-Plotly dashboard; 90\-second demo video; blog post draft
-
-Dashboard deployed; video uploaded
-
-9
-
-Polish
-
-arXiv\-style PDF; MkDocs site; peer review \(1 external reader\)
-
-PDF readable start\-to\-finish
-
-10
-
-Launch
-
-Tag v1\.0 release; post on LinkedIn \+ r/MachineLearning; cold outreach
-
-5\+ GitHub stars within first week
-
-## __10\.2\.1  Measured compute footprint \(M1 MPS, May 2026\)__
-
-Wall\-clock measured on the Apple M1 \(8 GB\) with MPS active, after the Week 2 verification smoke \(`act_nominal_fast\.yaml`\):
-
-- __Per ACT rollout: __5\.4–13\.2 s \(avg ~8 s; spread driven by the ACT chunk\-queue refill cadence — every ~50 steps the queue empties and a full transformer forward pass adds ~200 ms\)\.
-- __Full nominal eval \(`act_nominal\.yaml`, 3 seeds × 50 rollouts, 400\-step cap\): __~20–25 minutes\. Originally estimated at 2\.5–4 hours assuming CPU inference; MPS delivers a ~10× speedup on the convnet backbone\.
-- __Perturbation suite \(Week 4, ACT only, 4 axes × ~3 intensities × 3 seeds × 50 rollouts ≈ 1,800 rollouts\): __~4 hours\. Originally estimated at multi\-day on CPU\.
-- __Residual RL training \(Week 6\-7, 500k env steps\): __still the dominant compute cost; revise the M1 estimate in Section 8\.2 only once Week 6 baseline data is in\.
-
-Implication: the full nominal run is now a coffee\-break task, not an overnight task\. Section 11's "Eval is too slow on CPU" risk row is consequently downgraded to Low likelihood; CPU fallback remains the contingency for any future MPS regression\.
-
-## __10\.3  Definition of Done__
+- **GitHub repository** — zero lint errors (Ruff), zero mypy `--strict` type errors, CI passing on push, >70% test coverage on `roboeval/`, README with one-command eval instructions, MIT license file present.
+- **Writeup** — methods section reproducible from description alone; results section includes uncertainty estimates (mean ± std, N, seed count); limitations section present and honest; every figure has a caption with axis labels and units.
+- **Dashboard** — loads in <3 seconds; mobile-responsive; all plots have axis labels, units, and titles; failure-mode filter works without page reload.
+- **Demo video** — narrated; failure modes visually annotated; ≤90 seconds; 1080p minimum.
+- **MkDocs site** — all public functions documented; quickstart example runs without modification on a fresh clone.
+
+### 9.2 Quality Gates Between Phases
+
+A phase is not "done" — and the next phase does not start — until the gate below passes. Each gate maps to the Definition of Done (§10.3) for the project as a whole.
+
+| Gate | Phase Closing | Pass Criteria |
+|---|---|---|
+| **G1 — Foundation** | End of Phase 1 (Week 1) | Repo public, CI green on `main`, pre-commit hooks installed, MPS verified on M1 (`torch.backends.mps.is_available() == True`), smoke rollout renders without crash. |
+| **G2 — Baseline** | End of Phase 2 (Week 3) | Hydra-driven evaluate CLI working end-to-end; ACT mean TSR within ±5 percentage points of the model card's ~83% claim on the source task; σ < 7% across 3 seeds × 50 rollouts; harness loads any LeRobot policy through a single config flag (policy-agnostic protocol). |
+| **G3 — Robustness & Taxonomy** | End of Phase 3 (Week 5) | Perturbation TSR table complete for ACT across all 4 axes; ≥150 rollouts auto-labelled; classifier validated via blinded relabel with Cohen's κ > 0.6; all 6 categories populated with ≥20 examples; `needs_review` bucket reported. |
+| **G4 — Residual RL** | End of Phase 4 (Week 7) | PPO residual training curves visible in W&B; ablation table complete with all 3 conditions × 3 seeds × 50 rollouts; ΔTSR reported with t-test significance; honest write-up of null result if not >10%. |
+| **G5 — Communication** | End of Phase 5 (Week 8) | Plotly/Dash dashboard deployed at a public URL; 90-second demo video uploaded; blog post draft circulated for review. |
+| **G6 — Launch** | End of Phase 6 (Week 10) | All Definition-of-Done bullets (§10.3) true; v1.0 git tag pushed; LinkedIn/r/ML announcement posted. |
+
+**Gate failure protocol.** If a gate does not pass at the planned week, do not proceed to the next phase. Either (a) extend that phase by ≤1 week, eating buffer from Week 9–10, or (b) descope (move work to v1.1) per §3.2. Never push downstream work onto an unmet gate — that's how scope creep eats a 10-week plan.
+
+---
+
+## 10. Project Plan
+
+### 10.1 Phase Overview
+
+| Phase | Name | Key Deliverables | Duration |
+|---|---|---|---|
+| 1 | Foundation & Environment Setup | Repo scaffold, env verified, CI passing | Week 1 |
+| 2 | Baseline Policy Evaluation | Baseline metrics on Policy A (ACT); policy-agnostic harness v1 | Weeks 2–3 |
+| 3 | Robustness & Failure Mode Study | Perturbation suite, failure taxonomy, ablation plots | Weeks 4–5 |
+| 4 | Residual RL Fine-tuning | Trained residual policy, delta metrics, ablation | Weeks 6–7 |
+| 5 | Dashboard & Writeup | Plotly dashboard, blog post draft, demo video | Week 8 |
+| 6 | Polish & Launch | Peer review, README, arXiv-style PDF, public release | Weeks 9–10 |
+
+### 10.2 Week-by-Week Schedule
+
+Based on 15–20 focused hours per week, executable alongside part-time or full-time work.
+
+| Wk | Phase | Tasks | Done When… |
+|---|---|---|---|
+| 1 | Setup | Repo scaffold, CI, env install, smoke-test policy rollout | First rollout renders without crash |
+| 2 | Eval v1 | Baseline TSR on Policy A (ACT), 50 rollouts, log to W&B | W&B dashboard showing TSR ± std |
+| 3 | Eval v1 | Generalise harness to policy-agnostic loader (ready for v1.1 DP); expand ACT baseline to 3 seeds × 50 rollouts × nominal conditions | Harness loads any LeRobot policy via single config flag; ACT baseline TSR ± std logged to W&B (gate G2) |
+| 4 | Robustness | Perturbation suite (ACT only): object shift, lighting, distractor, action delay | Perturbation TSR table complete for Policy A |
+| 5 | Failure Study | Failure taxonomy: label 150+ rollouts, build classifier, plot distribution | Taxonomy heatmap + per-policy breakdown (gate G3) |
+| 6 | Residual RL | PPO residual policy setup; train on top-1 failure mode in sim | Training curve visible in W&B |
+| 7 | Residual RL | Ablation: residual vs. frozen baseline; compute ΔTSR | Ablation table with ≥3 conditions (gate G4) |
+| 8 | Comms | Plotly dashboard; 90-second demo video; blog post draft | Dashboard deployed; video uploaded (gate G5) |
+| 9 | Polish | arXiv-style PDF; MkDocs site; peer review (1 external reader) | PDF readable start-to-finish |
+| 10 | Launch | Tag v1.0 release; post on LinkedIn + r/MachineLearning; cold outreach | 5+ GitHub stars within first week (gate G6) |
+
+### 10.2.1 Measured Compute Footprint (M1 MPS, May 2026)
+
+Wall-clock measured on the Apple M1 (8 GB) with MPS active, after the Week 2 verification smoke (`act_nominal_fast.yaml`):
+
+- **Per ACT rollout:** 5.4–13.2 s (avg ~8 s; spread driven by the ACT chunk-queue refill cadence — every ~50 steps the queue empties and a full transformer forward pass adds ~200 ms).
+- **Full nominal eval** (`act_nominal.yaml`, 3 seeds × 50 rollouts, 400-step cap): **~20–25 minutes**. Originally estimated at 2.5–4 hours assuming CPU inference; MPS delivers a ~10× speedup on the convnet backbone.
+- **Perturbation suite** (Week 4, ACT only, 4 axes × ~3 intensities × 3 seeds × 50 rollouts ≈ 1,800 rollouts): **~4 hours**. Originally estimated at multi-day on CPU.
+- **Residual RL training** (Week 6–7, 500k env steps): still the dominant compute cost; revise the M1 estimate in §8.2 only once Week 6 baseline data is in.
+
+**Implication.** The full nominal run is now a coffee-break task, not an overnight task. §11's "Eval is too slow on CPU" risk row is consequently downgraded to Low likelihood; CPU fallback remains the contingency for any future MPS regression.
+
+### 10.3 Definition of Done
 
 The project is done when all of the following are true simultaneously:
 
@@ -658,166 +394,115 @@ The project is done when all of the following are true simultaneously:
 - All 6 failure categories have ≥20 labelled rollout examples
 - Residual RL ablation table shows results for all 3 conditions with ≥3 seeds
 - Dashboard is deployed and accessible via public URL
-- Blog post is published \(GitHub Pages, Medium, or personal site\)
+- Blog post is published (GitHub Pages, Medium, or personal site)
 - Demo video is posted on YouTube or LinkedIn
 
-# __11\. Risks & Mitigations__
+---
 
-__Risk__
+## 11. Risks & Mitigations
 
-__Likelihood__
+| Risk | Likelihood | Impact | Mitigation |
+|---|---|---|---|
+| Real-trained checkpoint loaded into sim env | Medium | Near-zero baseline TSR; eval results uninterpretable | Only use sim-trained variants from the LeRobot zoo (e.g. `lerobot/act_aloha_sim_transfer_cube_human`); verify on Day 1 by running the nominal-condition rollout and confirming TSR > 50% before any further work |
+| M1 RAM OOM during inference | High | Blocks eval loop | Use smaller ACT checkpoint; reduce batch size to 1; fallback to PyBullet env |
+| LeRobot API breaking changes | Medium | Eval harness breaks | Pin dependency versions (`lerobot==0.4.4` in pyproject.toml); CI rebuilds clean Ubuntu on every push to catch regressions |
+| Residual RL doesn't improve TSR | Medium | Weak project story | Reframe as negative result with analysis — still publishable; focus writeup on failure taxonomy instead |
+| Eval is too slow on CPU | Low | Limits rollout count | MPS verified on M1 in Week 2 (~8 s per ACT rollout, ~20 min for the full 150-rollout nominal). CPU fallback (`device: cpu` in eval config) remains the contingency for MPS regression; AsyncVectorEnv parallelisation is reserved for that contingency rather than required upfront |
+| Project scope creep | High | Misses 10-week target | Lock MVP scope at end of Phase 2; additional features go to backlog (v1.1); §9.2 phase gates block downstream work on unmet upstream criteria |
+| PRD-implementation drift | Medium | Code goes one way, writeup another; reduces credibility | `prd-check` skill invoked before any non-trivial feature work; weekly research-log entry cross-references PRD sections actually touched |
+| W&B free-tier limit hit mid-project | Low | Logging interrupted | Free tier covers ~100 GB; full perturbation suite estimated <5 GB. Local jsonl logs are the source of truth; W&B is the dashboard, not the storage |
 
-__Impact__
+---
 
-__Mitigation__
+## 12. Success Criteria
 
-Real\-trained checkpoint loaded into sim env
+### 12.1 Project Success (Technical)
 
-Medium
-
-Near\-zero baseline TSR; eval results uninterpretable
-
-Only use sim\-trained variants from the LeRobot zoo \(e\.g\. `lerobot/act_aloha_sim_transfer_cube_human`\); verify on Day 1 by running the nominal\-condition rollout and confirming TSR > 50% before any further work
-
-M1 RAM OOM during inference
-
-High
-
-Blocks eval loop
-
-Use smaller ACT checkpoint; reduce batch size to 1; fallback to PyBullet env
-
-LeRobot API breaking changes
-
-Medium
-
-Eval harness breaks
-
-Pin dependency versions; use Docker for reproducibility
-
-Residual RL doesn't improve TSR
-
-Medium
-
-Weak project story
-
-Reframe as negative result with analysis — still publishable; focus writeup on failure taxonomy instead
-
-Eval is too slow on CPU
-
-Low
-
-Limits rollout count
-
-MPS verified on M1 in Week 2 \(~8 s per ACT rollout, ~20 min for the full 150\-rollout nominal\)\. CPU fallback \(`device: cpu` in eval config\) remains the contingency for MPS regression; AsyncVectorEnv parallelisation is reserved for that contingency rather than required upfront\.
-
-Project scope creep
-
-High
-
-Misses 10\-week target
-
-Lock MVP scope at end of Phase 2; additional features go to backlog
-
-# __12\. Success Criteria__
-
-## __12\.1  Project Success \(Technical\)__
-
-- Evaluation harness runs Policy A \(ACT\) end\-to\-end without manual intervention, and is policy\-agnostic enough to accept a second LeRobot policy via config change with no code changes
-- At least 150 rollouts classified into failure taxonomy; rule\-based classifier validated via a 30\-rollout self\-relabel with blinding \(≥7\-day gap\) reaching Cohen's κ > 0\.6 \(substantial agreement\)
+- Evaluation harness runs Policy A (ACT) end-to-end without manual intervention, and is policy-agnostic enough to accept a second LeRobot policy via config change with no code changes
+- At least 150 rollouts classified into failure taxonomy; rule-based classifier validated via a 30-rollout self-relabel with blinding (≥7-day gap) reaching Cohen's κ > 0.6 (substantial agreement)
 - Residual RL ablation complete with all 3 conditions and error bars
-- All 7 deliverables shipped to public\-facing channels
+- All 7 deliverables shipped to public-facing channels
 
-## __12\.2  Career Success \(Hiring Signal\)__
+### 12.2 Career Success (Hiring Signal — Aspirational)
+
+External validation is partially outside the author's control. These targets are tracked but not project-blocking:
 
 - GitHub repository receives ≥5 stars within 2 weeks of launch
 - At least 1 cold outreach to a robot learning company receives a positive response citing the project
 - Project is discussed substantively in at least 1 technical interview
 - At least 1 hiring manager or researcher comments on or shares the writeup / dashboard
 
-## __12\.3  Personal Learning Success__
+### 12.3 Personal Learning Success
 
-- Able to explain reward design tradeoffs \(sparse vs\. shaped vs\. learned\) from first principles
+- Able to explain reward design tradeoffs (sparse vs. shaped vs. learned) from first principles
 - Able to walk through a residual RL training loop in a whiteboard interview without notes
 - Familiar with at least 3 papers per topic area covered in the writeup's related work section
 
-# __13\. Interview Question Alignment__
+---
 
-This table maps the most common robot learning interview questions to specific project artifacts, so responses are grounded in real, demonstrated work rather than hypotheticals:
+## 13. Interview Question Alignment
 
-__Common Interview Question__
+| Interview Question | Project Artifact | Answer Angle |
+|---|---|---|
+| Walk me through a time you evaluated a model rigorously | Eval harness + metrics table | Built reproducible harness; ran 50 rollouts per config; reported mean ± std across 3 seeds |
+| How do you design a reward function? | Reward ablation in Phase 4 | Compared sparse vs. shaped; showed tradeoffs in sample efficiency and reward hacking |
+| What does sim-to-real gap mean to you? | Phase 3 perturbation study | Systematically varied physics/visual params in sim; quantified TSR degradation curves |
+| Have you worked with RL on real systems? | Physical Intelligence experience + residual RL | Evaluated physical robot policies at PI; project extends that to RL fine-tuning in sim |
+| Tell me about a failure and what you learned | Failure taxonomy section | Classified 6 failure modes; recovery rate metric; residual RL targeted the highest-frequency failure |
+| How do you communicate technical findings? | Dashboard + blog post + video | Built interactive Plotly dashboard; wrote arXiv-style report; produced 90-second demo video |
 
-__Project Artifact__
+---
 
-__Your Answer Angle__
+## 14. Setup Log (Historical — Phase 1 Complete)
 
-Walk me through a time you evaluated a model rigorously
+The original "Day 1 Checklist" is preserved here as a setup record. **Phase 1 was closed at the end of Week 1**; the items below are the state on which all subsequent work rests. Current project state and weekly journal live in `docs/research-log.md`.
 
-Eval harness \+ metrics table
+1. GitHub repository created: `RubenoDechua/roboeval` — public, MIT license, Python .gitignore.
+2. `uv` installed: `curl -LsSf https://astral.sh/uv/install.sh | sh`.
+3. Project environment: `uv venv .venv && source .venv/bin/activate`.
+4. Core dependencies pinned in `pyproject.toml` — `lerobot==0.4.4`, `gymnasium`, `mujoco`, `stable-baselines3`, `hydra-core`, `wandb`, `plotly`, `ruff`, `mypy`.
+5. M1 MPS availability verified: `torch.backends.mps.is_available() == True`.
+6. LeRobot smoke test passed. **Note:** LeRobot 0.4.x removed the `lerobot.common` namespace; policies import directly from `lerobot.policies.*`.
+7. W&B project created: `roboeval`.
+8. Pre-commit hooks installed (`ruff`, `mypy --strict`, end-of-file-fixer, trailing-whitespace).
+9. Reading completed: ACT (Zhao et al. 2023), Diffusion Policy (Chi et al. 2023), Residual Policy Learning (Silver et al. 2019).
 
-Built reproducible harness; ran 50 rollouts per config; reported mean ± std across 3 seeds
+**The Most Important Instruction in This Document.** The gap between a good project and a great one is the writeup. Code without communication is invisible. Every week, write one paragraph describing what you did, what surprised you, and what you plan next. The blog post writes itself from these notes. Do not leave writing until Week 8. (Status: `docs/research-log.md` maintained weekly through Week 2.5.)
 
-How do you design a reward function?
+---
 
-Reward ablation in Phase 3
+## Appendix A — Reference Papers
 
-Compared sparse vs\. dense vs\. VLM\-as\-judge; showed tradeoffs in sample efficiency and reward hacking
+The minimum reading list before and during the project. Reading these is what allows the writeup to situate itself credibly in the field:
 
-What does sim\-to\-real gap mean to you?
+- **ACT** — Zhao et al. (2023). *Learning Fine-Grained Bimanual Manipulation with Low-Cost Hardware*. RSS 2023.
+- **Diffusion Policy** — Chi et al. (2023). *Diffusion Policy: Visuomotor Policy Learning via Action Diffusion*. RSS 2023.
+- **LeRobot** — Cadene et al. (2024). *LeRobot: State-of-the-art Machine Learning for Real-World Robotics*. GitHub.
+- **Residual RL** — Silver et al. (2019). *Residual Policy Learning*. arXiv:1812.06298.
+- **IRIS / Interactive Learning** — Mandlekar et al. (2020). *IRIS: Implicit Reinforcement without Interaction*. ICRA 2020.
+- **Robomimic** — Mandlekar et al. (2021). *What Matters in Learning from Offline Human Demonstrations for Robot Manipulation*. CoRL 2021.
+- **VLA Survey** — Firoozi et al. (2023). *Foundation Models in Robotics: Applications, Challenges, and the Future*. arXiv:2312.07843.
 
-Phase 3 perturbation study
+## Appendix B — Glossary
 
-Systematically varied physics/visual params in sim; quantified TSR degradation curves
+| Term | Definition |
+|---|---|
+| ACT | Action Chunking with Transformers — a transformer-based imitation learning policy that outputs action chunks rather than per-step actions. Zhao et al. 2023. |
+| Cohen's κ | Inter-rater agreement coefficient corrected for chance. κ > 0.6 indicates substantial agreement (Landis & Koch 1977). Used here to validate the rule-based failure classifier against a blinded manual self-relabel. |
+| DP | Diffusion Policy — a visuomotor policy that models the action distribution via denoising diffusion. Chi et al. 2023. Out of scope for v1.0 (no public ALOHA-Transfer-Cube checkpoint). |
+| gym-aloha | Gymnasium environment wrapping ALOHA bimanual manipulation tasks in MuJoCo, distributed with LeRobot. |
+| LeRobot | HuggingFace open-source robotics library hosting policy implementations, datasets, and model checkpoints. Pinned at v0.4.4 in this project. |
+| MPS | Apple's Metal Performance Shaders backend — PyTorch's GPU acceleration on Apple Silicon. ~10× speedup over CPU on the ACT convnet backbone (§10.2.1). |
+| MuJoCo | Physics simulator used by gym-aloha. The dm_control suite (which gym-aloha wraps) sets `info["is_success"]` from the underlying task reward. |
+| PPO | Proximal Policy Optimization (Schulman et al. 2017). The on-policy RL algorithm used for residual training, implemented via Stable-Baselines3. |
+| Residual RL | Training paradigm where a small policy `π_res` is learned on top of a frozen base `π_base`; the executed action is `π_base(s) + α · π_res(s)`. See Silver et al. 2019. |
+| run_sha | Short identifier composed of git SHA + W&B run ID + config hash. Every artifact in `data/` is tagged with its `run_sha` for traceability (§5.4). |
+| SB3 | Stable-Baselines3 — Python RL algorithm library used here for PPO. |
+| TSR | Task Success Rate — fraction of rollouts that complete the task. v1.0 reports both `mean_tsr` (gym-aloha native) and `mean_tsr_custom` (geometric criterion, §6.2). |
+| TTS | Time-to-Success — median number of simulation steps to task completion across successful rollouts. |
+| σ (sigma) | Standard deviation of TSR across 3 seed groups (each ≥50 rollouts). Target σ < 7% (§6.3). |
+| ΔTSR | TSR(residual condition) − TSR(frozen base). Primary residual-RL outcome metric. Target ΔTSR > +10 pp on the target failure mode (§8.3). |
 
-Have you worked with RL on real systems?
+---
 
-PI experience \+ residual RL
-
-Evaluated physical robot policies at PI; project extends that to RL fine\-tuning in sim
-
-Tell me about a failure and what you learned
-
-Failure taxonomy section
-
-Classified 6 failure modes; recovery rate metric; residual RL targeted the highest\-frequency failure
-
-How do you communicate technical findings?
-
-Dashboard \+ blog post \+ video
-
-Built interactive Plotly dashboard; wrote arXiv\-style report; produced 90\-second demo video
-
-# __14\. Getting Started — Day 1 Checklist__
-
-Complete these steps before writing any project code:
-
-1. Create GitHub repository: roboeval — set to public, MIT license, Python \.gitignore
-2. Install uv \(fast Python package manager\): curl \-LsSf https://astral\.sh/uv/install\.sh | sh
-3. Create project environment: uv venv \.venv && source \.venv/bin/activate
-4. Install core dependencies \(pin LeRobot to a known\-good version\): uv add 'lerobot==0\.4\.4' gymnasium mujoco stable\-baselines3 hydra\-core wandb plotly ruff mypy
-5. Verify M1 MPS availability: python \-c "import torch; print\(torch\.backends\.mps\.is\_available\(\)\)" — should print True
-6. Run LeRobot smoke test: python \-c "from lerobot\.policies\.act\.modeling\_act import ACTPolicy; print\('ACT loaded'\)" — note that LeRobot 0\.4\.x removed the `lerobot\.common` namespace; import policies directly from `lerobot\.policies\.*`
-7. Create first W&B project at wandb\.ai — free account, project name: roboeval
-8. Set up pre\-commit hooks: uv add \-\-dev pre\-commit && pre\-commit install
-9. Read these 3 papers before writing any evaluation code: ACT \(Zhao et al\. 2023\), Diffusion Policy \(Chi et al\. 2023\), ResiP \(residual RL for manipulation, 2022\)
-10. Block calendar: 3\-hour focused sessions on at least 5 days per week for 10 weeks
-
-__The Most Important Instruction in This Document__
-
-The gap between a good project and a great one is the writeup\. Code without communication is invisible\. Every week, write one paragraph describing what you did, what surprised you, and what you plan next\. The blog post writes itself from these notes\. Do not leave writing until Week 8\.
-
-# __Appendix: Reference Papers__
-
-These are the minimum reading list before and during the project\. Reading these papers is what allows the writeup to situate itself credibly in the field:
-
-- __ACT — __Zhao et al\. \(2023\)\. Learning Fine\-Grained Bimanual Manipulation with Low\-Cost Hardware\. RSS 2023\.
-- __Diffusion Policy — __Chi et al\. \(2023\)\. Diffusion Policy: Visuomotor Policy Learning via Action Diffusion\. RSS 2023\.
-- __LeRobot — __Cadene et al\. \(2024\)\. LeRobot: State\-of\-the\-art Machine Learning for Real\-World Robotics\. GitHub\.
-- __Residual RL — __Silver et al\. \(2019\)\. Residual Policy Learning\. arXiv:1812\.06298\.
-- __IWR / Interactive Learning — __Mandlekar et al\. \(2020\)\. IRIS: Implicit Reinforcement without Interaction\. ICRA 2020\.
-- __Robomimic — __Mandlekar et al\. \(2021\)\. What Matters in Learning from Offline Human Demonstrations for Robot Manipulation\. CoRL 2021\.
-- __VLA Survey — __Firoozi et al\. \(2023\)\. Foundation Models in Robotics: Applications, Challenges, and the Future\. arXiv:2312\.07843\.
-
-Document prepared by Rubeno Dechua — May 2026\. RoboEval is an independent portfolio project\. All tools referenced are open\-source or free\-tier\.
-
- 
+*Document prepared by Rubeno Dechua — May 2026. RoboEval is an independent portfolio project. All tools referenced are open-source or free-tier.*
