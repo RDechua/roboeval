@@ -100,6 +100,8 @@ convention = "google"
 "roboeval/policies/act_loader.py" = ["ANN401"]      # lerobot internals untyped
 "roboeval/evaluation/logger.py" = ["ANN401"]        # wandb internals untyped
 "roboeval/evaluation/calibration.py" = ["ANN401"]   # JSON values are heterogenous
+"roboeval/envs/perturb.py" = ["ANN401"]             # per-kind kwargs are heterogenous
+"roboeval/cli.py" = ["ANN401"]                      # OmegaConf cfg + env factory closures
 
 # ---------------------------------------------------------------------------
 # Mypy
