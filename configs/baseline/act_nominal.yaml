@@ -21,7 +21,13 @@ success:
   # via the `calibration:` OmegaConf resolver registered by the CLI.
   # Re-run `roboeval calibrate` to regenerate the JSON; configs auto-pick up.
   xy_tolerance_m: ${calibration:xy_tolerance_m}
-  dwell_steps: 5                 # PRD constant
+  # dwell_steps tuned to 1 because gym-aloha terminates the moment
+  # reward==4 (left gripper holds cube above table) — so the cube has
+  # at most one in-zone step before the loop breaks. See PRD §6.2 for
+  # the gym-aloha termination semantics and the dwell vs perturbation
+  # tradeoff; perturbation suites (Week 4) may use higher values where
+  # stable hold is the discriminator.
+  dwell_steps: 1
   target_xy: ${calibration:target_xy}
 
 wandb:

@@ -21,7 +21,7 @@ success:
   # data/calibration/transfer_cube_target_xy.json; regenerate with
   # `roboeval calibrate` and configs auto-pick up the new values.
   xy_tolerance_m: ${calibration:xy_tolerance_m}
-  dwell_steps: 5                 # PRD constant
+  dwell_steps: 1                 # see act_nominal.yaml for the rationale
   target_xy: ${calibration:target_xy}
 
 wandb:
