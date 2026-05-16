@@ -14,6 +14,17 @@ from roboeval.envs.success import SuccessCriterion, TransferCubeSuccessDetector
 from roboeval.evaluation.loop import evaluate_policy
 
 
+def _crit():
+    # Reproduces the Week-2 placeholder defaults so this loop test reads
+    # the same as before SuccessCriterion lost its dataclass defaults.
+    return SuccessCriterion(
+        z_threshold_m=0.05,
+        xy_tolerance_m=0.05,
+        dwell_steps=5,
+        target_xy=(0.0, 0.0),
+    )
+
+
 class _DeterministicEnv(gym.Env[Any, Any]):
     """Env whose success rate depends on the seed via a hash."""
 
@@ -69,7 +80,7 @@ def test_evaluate_policy_three_seed_groups():
     result = evaluate_policy(
         env_factory=_DeterministicEnv,
         policy=_NoopPolicy(),
-        detector_factory=lambda: TransferCubeSuccessDetector(SuccessCriterion()),
+        detector_factory=lambda: TransferCubeSuccessDetector(_crit()),
         seeds=[0, 1, 2],  # only seed_group=0 yields seeds < 50 → all succeed
         n_rollouts_per_seed=5,
         max_steps=10,

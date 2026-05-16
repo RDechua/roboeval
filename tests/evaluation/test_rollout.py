@@ -19,6 +19,19 @@ from gymnasium import spaces
 from roboeval.envs.success import SuccessCriterion, TransferCubeSuccessDetector
 from roboeval.evaluation.rollout import run_rollout
 
+# SuccessCriterion has no defaults; this helper rebuilds the old Week-2
+# placeholder behaviour so the mock-env rollout tests stay readable.
+_TEST_CRITERION_DEFAULTS = {
+    "z_threshold_m": 0.05,
+    "xy_tolerance_m": 0.05,
+    "dwell_steps": 5,
+    "target_xy": (0.0, 0.0),
+}
+
+
+def _crit(**overrides):
+    return SuccessCriterion(**{**_TEST_CRITERION_DEFAULTS, **overrides})
+
 
 class MockEnv(gym.Env[Any, Any]):
     """Single-step-success env: declares is_success after `success_after_n` steps."""
@@ -82,7 +95,7 @@ def _fake_cube_state(env):
 def test_rollout_records_native_success_and_step():
     env = MockEnv(success_after_n=5, max_steps=20)
     policy = MockPolicy()
-    detector = TransferCubeSuccessDetector(SuccessCriterion())
+    detector = TransferCubeSuccessDetector(_crit())
     result = run_rollout(
         env=env,
         policy=policy,
@@ -109,7 +122,7 @@ def test_rollout_records_native_success_and_step():
 def test_rollout_truncation_records_truncated_true():
     env = MockEnv(success_after_n=100, max_steps=20)  # never succeeds
     policy = MockPolicy()
-    detector = TransferCubeSuccessDetector(SuccessCriterion())
+    detector = TransferCubeSuccessDetector(_crit())
     result = run_rollout(
         env=env,
         policy=policy,
@@ -152,7 +165,7 @@ def test_rollout_raises_on_nan_action():
         run_rollout(
             env=env,
             policy=_BadPolicy(bad_action),
-            success_detector=TransferCubeSuccessDetector(SuccessCriterion()),
+            success_detector=TransferCubeSuccessDetector(_crit()),
             seed_group=0,
             rollout_idx=0,
             episode_seed=0,
@@ -168,7 +181,7 @@ def test_rollout_raises_on_inf_action():
         run_rollout(
             env=env,
             policy=_BadPolicy(bad_action),
-            success_detector=TransferCubeSuccessDetector(SuccessCriterion()),
+            success_detector=TransferCubeSuccessDetector(_crit()),
             seed_group=0,
             rollout_idx=0,
             episode_seed=0,
@@ -184,7 +197,7 @@ def test_rollout_raises_on_out_of_bound_action():
         run_rollout(
             env=env,
             policy=_BadPolicy(bad_action),
-            success_detector=TransferCubeSuccessDetector(SuccessCriterion()),
+            success_detector=TransferCubeSuccessDetector(_crit()),
             seed_group=0,
             rollout_idx=0,
             episode_seed=0,
@@ -200,7 +213,7 @@ def test_rollout_accepts_normal_actions_within_bounds():
     result = run_rollout(
         env=env,
         policy=_BadPolicy(ok_action),
-        success_detector=TransferCubeSuccessDetector(SuccessCriterion()),
+        success_detector=TransferCubeSuccessDetector(_crit()),
         seed_group=0,
         rollout_idx=0,
         episode_seed=0,
@@ -216,7 +229,7 @@ def test_rollout_custom_success_detected_via_high_cube():
     def high_cube(env):
         return np.array([0.0, 0.0, 0.10, 1.0, 0.0, 0.0, 0.0], dtype=np.float64)
 
-    detector = TransferCubeSuccessDetector(SuccessCriterion(dwell_steps=3))
+    detector = TransferCubeSuccessDetector(_crit(dwell_steps=3))
     result = run_rollout(
         env=env,
         policy=MockPolicy(),
