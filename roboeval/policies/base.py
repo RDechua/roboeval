@@ -31,11 +31,25 @@ implementations narrow internally.
 class Policy(Protocol):
     """Minimal evaluation contract.
 
-    The rollout loop only ever calls these two methods, so any object
-    that satisfies the Protocol — whether a wrapped pretrained checkpoint,
-    a residual head on top of a frozen base, or a hand-coded scripted
-    policy for testing — can be evaluated identically.
+    The rollout loop only ever calls :meth:`select_action` and
+    :meth:`reset`; the CLI additionally reads :attr:`policy_id` and
+    :attr:`device` for W&B logging. Any object that exposes those four
+    things — whether a wrapped pretrained checkpoint, a residual head
+    on top of a frozen base, or a hand-coded scripted policy for
+    testing — can be evaluated identically.
+
+    Attributes:
+        policy_id: Identifier the adapter was constructed from (typically
+            the HuggingFace repo id, e.g.
+            ``"lerobot/act_aloha_sim_transfer_cube_human"``). Logged
+            verbatim to the W&B run config for reproducibility.
+        device: Resolved torch device string (``"mps"``, ``"cuda"``, or
+            ``"cpu"``). May differ from the device requested at
+            construction time if the adapter fell back.
     """
+
+    policy_id: str
+    device: str
 
     def select_action(self, observation: ObservationDict) -> npt.NDArray[np.float32]:
         """Compute the next action for the current observation.
