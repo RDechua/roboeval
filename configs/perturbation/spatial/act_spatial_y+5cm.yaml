@@ -1,0 +1,14 @@
+# Spatial perturbation cell: cube initial y-position shifted +5 cm.
+# PRD §6.4 spatial axis, intensity 3 (largest in the suite).
+# Expected: TSR drops sharply -- this is the regime where the policy's
+# learned trajectory is most likely to miss the cube entirely.
+extends: configs/baseline/act_nominal.yaml
+
+perturbation:
+  kind: spatial
+  dx_m: 0.0
+  dy_m: 0.05
+
+wandb:
+  name_prefix: act_spatial_y+5cm
+  tags: [week4, perturbation, spatial, act, y+5cm]

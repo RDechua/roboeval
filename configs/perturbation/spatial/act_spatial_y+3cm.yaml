@@ -1,0 +1,12 @@
+# Spatial perturbation cell: cube initial y-position shifted +3 cm.
+# PRD §6.4 spatial axis, intensity 2.
+extends: configs/baseline/act_nominal.yaml
+
+perturbation:
+  kind: spatial
+  dx_m: 0.0
+  dy_m: 0.03
+
+wandb:
+  name_prefix: act_spatial_y+3cm
+  tags: [week4, perturbation, spatial, act, y+3cm]
