@@ -16,12 +16,13 @@ eval:
   max_steps: 400
 
 success:
-  z_threshold_m: 0.05
-  # Calibrated 2026-05-12 (commit c3a279b); see
-  # data/calibration/transfer_cube_target_xy.json.
-  xy_tolerance_m: 0.02185
-  dwell_steps: 5
-  target_xy: [-0.01835, 0.50576]
+  z_threshold_m: 0.05            # PRD constant
+  # Calibration values resolved at load time from
+  # data/calibration/transfer_cube_target_xy.json; regenerate with
+  # `roboeval calibrate` and configs auto-pick up the new values.
+  xy_tolerance_m: ${calibration:xy_tolerance_m}
+  dwell_steps: 5                 # PRD constant
+  target_xy: ${calibration:target_xy}
 
 wandb:
   project: roboeval

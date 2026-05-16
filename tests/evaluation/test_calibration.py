@@ -1,8 +1,10 @@
-"""Unit tests for the target_xy calibration math."""
+"""Unit tests for the target_xy calibration math and config resolver."""
 
 from __future__ import annotations
 
+import json
 import math
+from pathlib import Path
 
 import pytest
 
@@ -11,6 +13,9 @@ from roboeval.evaluation.calibration import (
     _PERCENTILE,
     calibrate_target_xy,
     calibration_to_dict,
+    clear_calibration_cache,
+    load_calibration_json,
+    register_calibration_resolver,
 )
 from roboeval.evaluation.types import RolloutResult
 
@@ -92,3 +97,78 @@ def test_calibration_to_dict_round_trips_provenance():
     assert len(payload["success_endpoints"]) == 30
     # Endpoints must be plain-JSON-serializable lists, not tuples
     assert isinstance(payload["success_endpoints"][0], list)
+
+
+# ---------------------------------------------------------------------------
+# load_calibration_json + register_calibration_resolver
+# ---------------------------------------------------------------------------
+
+
+def _write_calibration(path: Path, *, target_xy, xy_tolerance_m, extras=None):
+    payload = {
+        "target_xy": list(target_xy),
+        "xy_tolerance_m": xy_tolerance_m,
+    }
+    if extras:
+        payload.update(extras)
+    path.write_text(json.dumps(payload))
+
+
+def test_load_calibration_json_returns_parsed_dict(tmp_path):
+    calib = tmp_path / "calib.json"
+    _write_calibration(
+        calib,
+        target_xy=(-0.018, 0.506),
+        xy_tolerance_m=0.022,
+        extras={"git_sha": "deadbee", "n_successes": 44},
+    )
+    data = load_calibration_json(calib)
+    assert data["target_xy"] == [-0.018, 0.506]
+    assert data["xy_tolerance_m"] == 0.022
+    assert data["git_sha"] == "deadbee"
+
+
+def test_load_calibration_json_missing_file_helpful_error(tmp_path):
+    missing = tmp_path / "nope.json"
+    with pytest.raises(FileNotFoundError, match="roboeval calibrate"):
+        load_calibration_json(missing)
+
+
+def test_load_calibration_json_rejects_missing_required_keys(tmp_path):
+    calib = tmp_path / "broken.json"
+    calib.write_text(json.dumps({"target_xy": [0, 0]}))  # missing xy_tolerance_m
+    with pytest.raises(KeyError, match="xy_tolerance_m"):
+        load_calibration_json(calib)
+
+
+def test_calibration_resolver_interpolates_in_omegaconf(tmp_path):
+    from omegaconf import OmegaConf
+
+    calib = tmp_path / "calib.json"
+    _write_calibration(calib, target_xy=(-0.018, 0.506), xy_tolerance_m=0.022)
+    clear_calibration_cache()
+    register_calibration_resolver(path=calib)
+
+    cfg = OmegaConf.create(
+        {
+            "success": {
+                "target_xy": "${calibration:target_xy}",
+                "xy_tolerance_m": "${calibration:xy_tolerance_m}",
+            }
+        }
+    )
+    assert list(cfg.success.target_xy) == [-0.018, 0.506]
+    assert cfg.success.xy_tolerance_m == 0.022
+
+
+def test_calibration_resolver_unknown_key_raises(tmp_path):
+    from omegaconf import OmegaConf
+
+    calib = tmp_path / "calib.json"
+    _write_calibration(calib, target_xy=(0, 0), xy_tolerance_m=0.01)
+    clear_calibration_cache()
+    register_calibration_resolver(path=calib)
+
+    cfg = OmegaConf.create({"x": "${calibration:not_a_real_key}"})
+    with pytest.raises(Exception, match="not_a_real_key"):
+        _ = cfg.x
