@@ -15,6 +15,7 @@
 # Wall-time on M1 MPS: ~6-7 minutes.
 
 policy:
+  kind: act
   repo_id: lerobot/act_aloha_sim_transfer_cube_human
   device: mps
 

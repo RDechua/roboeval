@@ -3,6 +3,7 @@
 # This is the development gate; the full act_nominal.yaml is the overnight run.
 
 policy:
+  kind: act
   repo_id: lerobot/act_aloha_sim_transfer_cube_human
   device: mps
 
