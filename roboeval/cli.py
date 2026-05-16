@@ -120,6 +120,7 @@ def _cmd_evaluate(config_path: str) -> int:
             SuccessCriterion,
             TransferCubeSuccessDetector,
         )
+        from roboeval.evaluation.calibration import register_calibration_resolver
         from roboeval.evaluation.logger import wandb_run
         from roboeval.evaluation.loop import evaluate_policy
         from roboeval.policies.act_loader import load_act_policy
@@ -127,6 +128,11 @@ def _cmd_evaluate(config_path: str) -> int:
         _LOG.error("Missing dependency: %s", exc)
         _LOG.error("Run `uv pip install -e '.[dev]'` to install the stack.")
         return 1
+
+    # Register the `${calibration:...}` resolver so configs can interpolate
+    # frozen calibration values directly. Done before OmegaConf.load so
+    # interpolation is resolved on access.
+    register_calibration_resolver()
 
     cfg = OmegaConf.load(config_path)
     target_xy_list = list(cfg.success.target_xy)
@@ -273,12 +279,16 @@ def _cmd_calibrate(
         return 1
 
     cfg = OmegaConf.load(config_path)
-    target_xy_list = list(cfg.success.target_xy)
+    # The calibrate command produces the calibration JSON; it cannot read
+    # from it. We build a wide-open detector inline whose only job is to
+    # be present (calibrate_target_xy only consults the PRIMARY success
+    # signal `r.success`, never `r.success_custom` — see
+    # roboeval.evaluation.calibration.calibrate_target_xy).
     placeholder_criterion = SuccessCriterion(
-        z_threshold_m=float(cfg.success.z_threshold_m),
-        xy_tolerance_m=float(cfg.success.xy_tolerance_m),
-        dwell_steps=int(cfg.success.dwell_steps),
-        target_xy=(float(target_xy_list[0]), float(target_xy_list[1])),
+        z_threshold_m=0.05,
+        xy_tolerance_m=1.0,
+        dwell_steps=10_000,
+        target_xy=(0.0, 0.0),
     )
 
     _LOG.info(

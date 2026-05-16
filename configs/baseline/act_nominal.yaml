@@ -16,15 +16,13 @@ eval:
   max_steps: 400
 
 success:
-  z_threshold_m: 0.05
-  # Calibrated 2026-05-12 (commit c3a279b) via `roboeval calibrate` on 50
-  # nominal rollouts (44 successes); see data/calibration/transfer_cube_target_xy.json.
-  # 90th-percentile of ||endpoint - centroid|| was 0.02185 m.
-  xy_tolerance_m: 0.02185
-  dwell_steps: 5
-  # Left-arm receptacle is offset ~0.5 m in +y; the original (0,0) placeholder
-  # was the reason mean_tsr_custom = 0.000 on the Week 2 smoke.
-  target_xy: [-0.01835, 0.50576]
+  z_threshold_m: 0.05            # PRD constant
+  # Calibrated values pulled from data/calibration/transfer_cube_target_xy.json
+  # via the `calibration:` OmegaConf resolver registered by the CLI.
+  # Re-run `roboeval calibrate` to regenerate the JSON; configs auto-pick up.
+  xy_tolerance_m: ${calibration:xy_tolerance_m}
+  dwell_steps: 5                 # PRD constant
+  target_xy: ${calibration:target_xy}
 
 wandb:
   project: roboeval
