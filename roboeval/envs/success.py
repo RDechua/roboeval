@@ -23,22 +23,29 @@ _CUBE_STATE_DIM = 7  # x, y, z, qw, qx, qy, qz
 class SuccessCriterion:
     """Thresholds and target for the geometric success criterion.
 
+    All fields are required — there are no defaults. The PRD-defined
+    constants (``z_threshold_m=0.05``, ``dwell_steps=5``) and the
+    calibration-derived values (``target_xy``, ``xy_tolerance_m``,
+    see :mod:`roboeval.evaluation.calibration`) live in the YAML configs
+    and the calibration JSON respectively; instantiating this dataclass
+    without arguments would silently mask a missing config field.
+
     Attributes:
         z_threshold_m: Minimum cube z-position above the table, in metres.
-            PRD default 0.05 m.
+            PRD constant: ``0.05``.
         xy_tolerance_m: Half-width of the target xy-box around
-            ``target_xy``, in metres. PRD default 0.05 m.
+            ``target_xy``, in metres. Calibration-derived; see
+            ``data/calibration/transfer_cube_target_xy.json``.
         dwell_steps: Number of consecutive simulation steps the geometric
-            condition must hold. PRD default 5.
+            condition must hold. PRD constant: ``5``.
         target_xy: (x, y) coordinates of the target receptacle centre,
-            in metres. Default ``(0.0, 0.0)``; Week 2 tunes this against
-            the ACT nominal run.
+            in metres. Calibration-derived; see the calibration JSON.
     """
 
-    z_threshold_m: float = 0.05
-    xy_tolerance_m: float = 0.05
-    dwell_steps: int = 5
-    target_xy: tuple[float, float] = (0.0, 0.0)
+    z_threshold_m: float
+    xy_tolerance_m: float
+    dwell_steps: int
+    target_xy: tuple[float, float]
 
 
 class TransferCubeSuccessDetector:
