@@ -127,7 +127,7 @@ def _fake_cube_state(env: gym.Env[Any, Any]) -> npt.NDArray[np.float64]:
 def cli_test_config(tmp_path: Path) -> Path:
     """Write a YAML config matching the schema OmegaConf.load consumes."""
     cfg = {
-        "policy": {"repo_id": "mock-act", "device": "cpu"},
+        "policy": {"kind": "act", "repo_id": "mock-act", "device": "cpu"},
         "env": {"task": "AlohaTransferCube-v0", "episode_length": 10},
         "eval": {"seeds": [0], "n_rollouts_per_seed": 2, "max_steps": 10},
         "success": {

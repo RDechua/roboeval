@@ -123,7 +123,7 @@ def _cmd_evaluate(config_path: str) -> int:
         from roboeval.evaluation.calibration import register_calibration_resolver
         from roboeval.evaluation.logger import wandb_run
         from roboeval.evaluation.loop import evaluate_policy
-        from roboeval.policies.act_loader import load_act_policy
+        from roboeval.policies.factory import load_policy
     except ImportError as exc:
         _LOG.error("Missing dependency: %s", exc)
         _LOG.error("Run `uv pip install -e '.[dev]'` to install the stack.")
@@ -144,12 +144,14 @@ def _cmd_evaluate(config_path: str) -> int:
     )
 
     _LOG.info(
-        "Loading ACT policy %s on device=%s",
+        "Loading %s policy %s on device=%s",
+        str(cfg.policy.kind),
         str(cfg.policy.repo_id),
         str(cfg.policy.device),
     )
     try:
-        policy = load_act_policy(
+        policy = load_policy(
+            kind=str(cfg.policy.kind),
             repo_id=str(cfg.policy.repo_id),
             task=str(cfg.env.task),
             device=str(cfg.policy.device),
@@ -162,6 +164,7 @@ def _cmd_evaluate(config_path: str) -> int:
 
     run_name = f"{cfg.wandb.name_prefix}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     config_dict = {
+        "policy_kind": str(cfg.policy.kind),
         "policy_id": str(cfg.policy.repo_id),
         "env_id": ALOHA_TRANSFER_CUBE_ID,
         "device": policy.device,
@@ -273,7 +276,7 @@ def _cmd_calibrate(
             calibration_to_dict,
         )
         from roboeval.evaluation.loop import evaluate_policy
-        from roboeval.policies.act_loader import load_act_policy
+        from roboeval.policies.factory import load_policy
     except ImportError as exc:
         _LOG.error("Missing dependency: %s", exc)
         return 1
@@ -292,12 +295,14 @@ def _cmd_calibrate(
     )
 
     _LOG.info(
-        "Loading ACT policy %s on device=%s for calibration",
+        "Loading %s policy %s on device=%s for calibration",
+        str(cfg.policy.kind),
         str(cfg.policy.repo_id),
         str(cfg.policy.device),
     )
     try:
-        policy = load_act_policy(
+        policy = load_policy(
+            kind=str(cfg.policy.kind),
             repo_id=str(cfg.policy.repo_id),
             task=str(cfg.env.task),
             device=str(cfg.policy.device),

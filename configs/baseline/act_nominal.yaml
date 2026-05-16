@@ -3,6 +3,7 @@
 # PRD Section 10.2 Week 2 target; PRD Section 6.3 reporting convention.
 
 policy:
+  kind: act     # routes to roboeval.policies.factory.load_policy → ACT adapter
   repo_id: lerobot/act_aloha_sim_transfer_cube_human
   device: mps   # falls back to CPU automatically if MPS not available
 
