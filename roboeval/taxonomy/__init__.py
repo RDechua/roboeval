@@ -20,12 +20,22 @@ from __future__ import annotations
 
 from roboeval.taxonomy.agreement import KappaResult, cohens_kappa
 from roboeval.taxonomy.classifier import classify_rollout
+from roboeval.taxonomy.io import (
+    SCHEMA_VERSION,
+    compute_distribution,
+    labels_to_json_obj,
+    write_auto_labels,
+)
 from roboeval.taxonomy.types import FailureMode, RolloutLabel
 
 __all__ = [
+    "SCHEMA_VERSION",
     "FailureMode",
     "KappaResult",
     "RolloutLabel",
     "classify_rollout",
     "cohens_kappa",
+    "compute_distribution",
+    "labels_to_json_obj",
+    "write_auto_labels",
 ]

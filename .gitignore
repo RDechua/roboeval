@@ -12,6 +12,11 @@ wandb/
 outputs/
 *.mp4
 *.pkl
+# Auto-classifier labels are per-run artifacts (PRD §7.3 frozen evidence
+# trail). Keep them out of git — the directory is created on demand by
+# `roboeval evaluate`.
+data/taxonomy/auto_labels_*.json
+.coverage
 
 # Env
 .env

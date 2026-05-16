@@ -125,6 +125,11 @@ def _cmd_evaluate(config_path: str) -> int:
         from roboeval.evaluation.logger import wandb_run
         from roboeval.evaluation.loop import evaluate_policy
         from roboeval.policies.factory import load_policy
+        from roboeval.taxonomy import (
+            classify_rollout,
+            compute_distribution,
+            write_auto_labels,
+        )
     except ImportError as exc:
         _LOG.error("Missing dependency: %s", exc)
         _LOG.error("Run `uv pip install -e '.[dev]'` to install the stack.")
@@ -227,6 +232,28 @@ def _cmd_evaluate(config_path: str) -> int:
             )
             handle.log_summary(result)
 
+            # PRD §7.3 steps 2 + 4: auto-classify every rollout, write
+            # the frozen labels artifact, and surface the distribution.
+            perturbation_applied = perturb_kind is not None
+            labels = [
+                classify_rollout(r, perturbation_applied=perturbation_applied)
+                for r in result.rollouts
+            ]
+            distribution = compute_distribution(labels)
+            run_id = str(handle.run_id) if handle.run_id is not None else run_name
+            labels_path = write_auto_labels(
+                labels,
+                output_dir="data/taxonomy",
+                run_id=run_id,
+                config_path=str(config_path),
+                policy_id=str(cfg.policy.repo_id),
+                env_id=ALOHA_TRANSFER_CUBE_ID,
+                perturbation_kind=perturb_kind or "none",
+                perturbation_params=perturb_params,
+                perturbation_applied=perturbation_applied,
+            )
+            handle.log_distribution(distribution)
+
             summary = (
                 f"\n[roboeval] Evaluation complete.\n"
                 f"  mean_tsr        = {result.mean_tsr:.3f} +/- {result.std_tsr:.3f}"
@@ -238,6 +265,8 @@ def _cmd_evaluate(config_path: str) -> int:
                 f"  n_rollouts      = {result.n_rollouts} across "
                 f"{result.n_seed_groups} seed group(s)\n"
                 f"  per_seed_tsr    = {result.per_seed_tsr}\n"
+                f"  failure_dist    = {distribution}\n"
+                f"  auto_labels     = {labels_path}\n"
             )
             print(summary)
             if handle.url:
