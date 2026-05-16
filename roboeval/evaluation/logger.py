@@ -45,6 +45,10 @@ _ROLLOUT_TABLE_COLUMNS: list[str] = [
     "final_cube_y",
     "final_cube_xy_dist",
     "failure_mode",
+    "action_sign_flip_rate",
+    "terminal_eef_xy_distance_m",
+    "contact_made",
+    "last_50_step_cube_displacement_m",
 ]
 
 
@@ -90,6 +94,10 @@ class WandbRunHandle:
             result.final_cube_y,
             result.final_cube_xy_dist,
             result.failure_mode,
+            result.action_sign_flip_rate,
+            result.terminal_eef_xy_distance_m,
+            result.contact_made,
+            result.last_50_step_cube_displacement_m,
         )
 
     def log_summary(self, eval_result: EvalResult) -> None:
