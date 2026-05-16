@@ -370,3 +370,93 @@ PRD Section 10.2 Week 4 target — "Perturbation suite (ACT only): object shift,
 7. **Optional polish (defer if time-tight)** — add `configs/baseline/act_model_card_compat.yaml` with seeds 1000–1499 and `n_rollouts_per_seed=500, seeds=[1000]`-style overrides so we can prove bit-exact match to 83%.
 
 ---
+
+## Week 4 — 2026-05-15 (Day 1: spatial degradation curve + sigma collapse)
+
+First three perturbation cells run on M1 MPS. Headline: a clean, statistically strong degradation curve from nominal 80% down to 31% TSR across +1, +3, +5 cm cube-y shifts. The σ behaviour is more interesting than the means.
+
+### Spatial sweep results (ACT, 3 seeds × 50 rollouts per cell)
+
+| Cell | W&B run | `mean_tsr` | `mean_tsr_custom` | σ | per-seed primary | `median_tts` |
+|---|---|---|---|---|---|---|
+| nominal      | `tlbkwp5o` | 0.800 | 0.680 | 0.057 | (0.88, 0.76, 0.76) | 246 |
+| spatial y+1cm | `0jjaspwj` | 0.720 | 0.647 | 0.102 | (0.86, 0.62, 0.68) | 259 |
+| spatial y+3cm | `alvburfn` | 0.553 | 0.533 | **0.041** | (0.60, 0.50, 0.56) | 284 |
+| spatial y+5cm | `1f1g52r3` | 0.307 | 0.320 | **0.019** | (0.32, 0.32, 0.28) | 290 |
+
+Statistical significance of the step-to-step drops (pooled SE across the 3-seed mean difference):
+
+| Transition | Δ mean_tsr | pooled SE | σ-distance |
+|---|---|---|---|
+| nominal → y+1cm | −8.0 pp | ±6.7 pp | 1.2σ (marginal) |
+| y+1cm → y+3cm   | −16.7 pp | ±6.3 pp | 2.7σ (significant) |
+| y+3cm → y+5cm   | −24.6 pp | ±2.6 pp | **9.2σ (very strong)** |
+
+So the curve is statistically very strong from +1 cm onwards: roughly −10 pp TSR per 2 cm of shift, with the slope steepening at large perturbation.
+
+### Sigma collapse — the unexpected finding
+
+The standard-deviation column is the headline result, not the mean column. σ peaks at +1 cm (0.102, ~2× nominal) and then **collapses below the Bernoulli noise floor** at +3 and +5 cm:
+
+| Cell | observed σ | Bernoulli SE at this p | observed / Bernoulli |
+|---|---|---|---|
+| nominal      | 0.057 | `√(0.8·0.2/50)` = 0.057 | 1.00× |
+| spatial y+1cm | 0.102 | `√(0.72·0.28/50)` = 0.064 | **1.60×** |
+| spatial y+3cm | 0.041 | `√(0.55·0.45/50)` = 0.070 | 0.58× |
+| spatial y+5cm | 0.019 | `√(0.31·0.69/50)` = 0.065 | 0.29× |
+
+**Interpretation.** At small perturbation (+1 cm) the policy is in the *edge of its training distribution* — some rollouts adapt and succeed, others miss. The variance is **above** Bernoulli because per-seed-group outcomes are correlated within a group (each group's draws share the same initial-conditions stream); the +1 cm case amplifies that correlation by sitting on the edge of the policy's competence. At large perturbation (+3, +5 cm) the policy consistently fails — the variance collapses **below** the Bernoulli floor because failures are now **systematic, not stochastic**. The policy doesn't have "lucky days" at +5 cm; it just doesn't know what to do.
+
+This is a meaningful claim for the writeup: ACT under spatial shift exhibits a **competence-collapse signature** where variance grows just past the training-distribution boundary and then deterministically drops as the policy locks into a failure mode. Worth a paragraph in §6.4 of the writeup eventually.
+
+### Custom TSR → primary TSR convergence at high failure rate
+
+The `mean_tsr_custom` vs `mean_tsr` gap closes as the perturbation grows:
+
+| Cell | mean_tsr | mean_tsr_custom | gap (pp) |
+|---|---|---|---|
+| nominal      | 0.800 | 0.680 | **−12.0** |
+| spatial y+1cm | 0.720 | 0.647 | −7.3 |
+| spatial y+3cm | 0.553 | 0.533 | −2.0 |
+| spatial y+5cm | 0.307 | 0.320 | **+1.3** |
+
+Mechanism: under nominal, the gap is the "held-but-loosely-placed" cubes (PRD §6.2's calibration tail). As perturbation grows, fewer cubes are held at all — both signals fall together until at +5 cm the custom signal actually edges *above* primary (1.3 pp, within noise). Confirms the PRD §6.2 design intent: under perturbation the custom signal becomes the more selective discriminator of "actually completed the task".
+
+### Why the failure-mode classifier doesn't help yet
+
+Tested the scaffolded `classify_rollout` against synthetic `RolloutResult`s. Confirmed: because of gym-aloha's `terminated = is_success = reward == 4` semantics (research-log Week 3 Day 1), **every failed rollout has `truncated=True, terminated=False`**, so the current classifier puts 100% of failures in `FailureMode.TIMEOUT`. That's *correct per the implemented rule* but adds zero information beyond `1 - mean_tsr`.
+
+The interesting failure categories (Grasp / Approach / Oscillation / Recovery) all require per-step trajectory data — action vector, end-effector pose, finger-object contact — which `RolloutResult` doesn't carry yet. **Week 5 prep work** is exactly this: extend `RolloutResult` with trajectory fields and the classifier's four currently-`NEEDS_REVIEW` branches will light up.
+
+### What I'd plot for the writeup
+
+A single figure with two panels:
+
+* **Panel A:** TSR vs y-shift, four points (nominal, +1, +3, +5 cm), error bars = σ across 3 seed groups. Both `mean_tsr` and `mean_tsr_custom` lines, the gap shaded to make the convergence at +5cm visible.
+* **Panel B:** σ vs y-shift, with the Bernoulli SE floor overlaid as a dashed line. The +1 cm point sits above the floor (over-dispersion); +3 and +5 cm sit below (failure determinism).
+
+That's the spatial-axis paragraph. Adds maybe 200 words to the writeup with the figure.
+
+### What this session deliberately skipped
+
+- **Negative shifts (y-1, y-3, y-5 cm).** Would symmetrise the curve and test whether ACT degrades isotropically. Worth doing but not until we know whether negative-y is a different regime (the left-arm receptacle is at +y ≈ 0.5 m, so −y moves the cube further from the target, +y closer — same magnitude, asymmetric semantics). Defer until trajectory data is in so we can attribute the failures meaningfully.
+- **Visual / dynamic / temporal axes.** Spatial alone is enough to confirm the harness works and produces a clean curve. Adding axes without trajectory data multiplies cells with no extra classifier signal. Better order: trajectory data → re-run spatial with full classifier → then add the other axes.
+
+### Next session (Week 4 → Week 5 pivot — trajectory data first)
+
+PRD §10.2 Week 5 target — "Failure taxonomy: label 150+ rollouts, build classifier, plot distribution" / done = "Taxonomy heatmap + per-policy breakdown". Pulling the trajectory-data extension forward from Week 5 because it unblocks meaningful analysis of the spatial cells we already ran.
+
+1. **Extend `RolloutResult`** with four new fields: `action_sign_flip_rate: float`, `terminal_eef_xy_distance_m: float | None`, `contact_made: bool`, `last_50_step_cube_displacement_m: float`. Each is a per-rollout aggregate, not full trajectories — keeps memory bounded.
+2. **Extend `run_rollout`** to compute the four aggregates. Action sign-flip is `(action_t · action_{t-1} < 0).any(axis=0).mean()` over the episode; EE pose comes from `physics.data.xpos` for the left-arm end-effector body; contact bit reads from `physics.data.ncon` for cube-finger pairs.
+3. **Light up the four `NEEDS_REVIEW` classifier branches** in `roboeval/taxonomy/classifier.py`. Each branch reads the new aggregates and applies the PRD §7.2 detection rule.
+4. **Re-classify the existing 3 spatial cells** by re-running them (~25 min × 3 = ~75 min) and producing a failure-mode distribution per cell. Should see Grasp/Approach mix at +1cm shifting toward Approach-dominant at +5cm (the policy increasingly never makes contact).
+5. **Write the §6.4 writeup paragraph** with the degradation curve + σ-collapse + failure-mode-shift findings.
+6. **Then** scaffold the temporal axis (cheapest of the remaining three). Visual and dynamic land in Week 6 — visual needs render-pipeline hooks; dynamic needs the rollout-loop perturbation_callback.
+
+### Open questions to resolve
+
+- Is the σ-collapse real or an artifact of the seed-group correlation structure at our N=50 per group? A robustness check would re-run y+5cm with N=100 per group; if observed σ stays well below `√(0.31·0.69/100)` ≈ 0.046, the determinism finding is robust.
+- The +5 cm `mean_tsr_custom` (0.320) is *higher* than `mean_tsr` (0.307) by 1.3 pp. Within noise (σ_custom = 0.059 vs σ_primary = 0.019, so the difference is 0.27 SE) but worth a sanity check that the geometric criterion isn't double-counting some near-success cases at high perturbation.
+- Does the `Unexpected key(s)` warning's normalisation-equivalence assumption (Week 3 Day 2 entry) hold under perturbation? If HF re-normalised the dataset after the original training, the perturbed runs might be subtly biased. Empirical check: the nominal 80% matches model card 83% within noise — so probably fine.
+
+---
