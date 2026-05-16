@@ -35,13 +35,34 @@ import gymnasium as gym
 import numpy as np
 import numpy.typing as npt
 
-from roboeval.envs.aloha import get_cube_state
+from roboeval.envs.aloha import (
+    get_cube_gripper_contact,
+    get_cube_state,
+    get_gripper_xy,
+)
 from roboeval.envs.success import TransferCubeSuccessDetector
 from roboeval.evaluation.types import RolloutResult
 from roboeval.policies.base import Policy
 
 CubeStateFn = Callable[[gym.Env[Any, Any]], npt.NDArray[np.float64]]
 """Function that pulls the 7-element cube qpos from a live env."""
+
+GripperXyFn = Callable[
+    [gym.Env[Any, Any]],
+    tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]] | None,
+]
+"""Function that returns ``(left_xy, right_xy)`` gripper positions or None."""
+
+ContactFn = Callable[[gym.Env[Any, Any]], bool]
+"""Function that returns True if cube↔gripper-finger contact is active."""
+
+_DISPLACEMENT_WINDOW_STEPS: int = 50
+"""Window size for the last-N-step cube-displacement aggregate.
+
+PRD §7.2 Recovery rule uses this to detect quiescence: a small terminal
+displacement after a failed grasp means the policy stalled rather than
+recovering. The 50-step window is ~10% of an episode at the 400-step cap.
+"""
 
 _ACTION_BOUND_LIMIT: float = 100.0
 """Sanity ceiling on ``|action|`` per dim.
@@ -99,6 +120,48 @@ def seed_everything(seed: int) -> None:
         torch.mps.manual_seed(seed)
 
 
+def _compute_action_sign_flip_rate(actions: list[npt.NDArray[np.float32]]) -> float:
+    """Fraction of ``(step, dim)`` pairs whose action sign flipped from t-1.
+
+    Defined as the mean over all ``t`` in ``[1, T)`` and all dims of
+    ``sign(a_t) * sign(a_{t-1}) < 0``. Returns ``0.0`` for runs with fewer
+    than two recorded actions.
+    """
+    if len(actions) < 2:
+        return 0.0
+    stacked = np.stack(actions, axis=0)
+    signs = np.sign(stacked)
+    flips = (signs[:-1] * signs[1:]) < 0
+    return float(flips.mean())
+
+
+def _compute_last_window_displacement(
+    cube_xy_history: list[npt.NDArray[np.float64]], window: int
+) -> float:
+    """Euclidean xy displacement over the last ``window`` steps."""
+    if len(cube_xy_history) < 2:
+        return 0.0
+    span = min(window, len(cube_xy_history) - 1)
+    start = cube_xy_history[-1 - span]
+    end = cube_xy_history[-1]
+    return float(np.hypot(end[0] - start[0], end[1] - start[1]))
+
+
+def _compute_terminal_eef_distance(
+    gripper_xy_fn: GripperXyFn,
+    env: gym.Env[Any, Any],
+    cube_xy: npt.NDArray[np.float64],
+) -> float | None:
+    """Min xy distance from either gripper to the cube at the final step."""
+    pair = gripper_xy_fn(env)
+    if pair is None:
+        return None
+    left, right = pair
+    d_left = float(np.hypot(left[0] - cube_xy[0], left[1] - cube_xy[1]))
+    d_right = float(np.hypot(right[0] - cube_xy[0], right[1] - cube_xy[1]))
+    return min(d_left, d_right)
+
+
 def run_rollout(
     env: gym.Env[Any, Any],
     policy: Policy,
@@ -108,6 +171,8 @@ def run_rollout(
     episode_seed: int,
     max_steps: int = 400,
     cube_state_fn: CubeStateFn = get_cube_state,
+    gripper_xy_fn: GripperXyFn = get_gripper_xy,
+    contact_fn: ContactFn = get_cube_gripper_contact,
 ) -> RolloutResult:
     """Run a single rollout and return a typed result.
 
@@ -123,6 +188,12 @@ def run_rollout(
         cube_state_fn: Accessor for the cube's 7-element qpos. Overridden
             in tests; defaults to
             :func:`roboeval.envs.aloha.get_cube_state`.
+        gripper_xy_fn: Accessor for ``(left_xy, right_xy)`` gripper-link
+            positions; returns ``None`` on envs without dm_control physics.
+            Defaults to :func:`roboeval.envs.aloha.get_gripper_xy`.
+        contact_fn: Per-step accessor returning ``True`` iff cube↔gripper-
+            finger contact is active. Defaults to
+            :func:`roboeval.envs.aloha.get_cube_gripper_contact`.
 
     Returns:
         A :class:`RolloutResult` describing the episode.
@@ -141,17 +212,25 @@ def run_rollout(
     truncated = False
     n_steps = 0
     final_cube_state = cube_state_fn(env)
+    action_history: list[npt.NDArray[np.float32]] = []
+    cube_xy_history: list[npt.NDArray[np.float64]] = [final_cube_state[:2].copy()]
+    contact_made = False
 
     start_t = time.perf_counter()
     for step_idx in range(max_steps):
         action = policy.select_action(obs)
         _assert_action_finite_and_bounded(action, step_idx)
+        action_history.append(action.copy())
         obs, reward, terminated, truncated, info = env.step(action)
         n_steps = step_idx + 1
         max_reward = max(max_reward, int(float(reward)))
 
         cube_state = cube_state_fn(env)
         final_cube_state = cube_state
+        cube_xy_history.append(cube_state[:2].copy())
+
+        if not contact_made and contact_fn(env):
+            contact_made = True
 
         custom_hit = success_detector.update(cube_state)
         native_hit = bool(info.get("is_success", False))
@@ -171,6 +250,14 @@ def run_rollout(
     final_z = float(final_cube_state[2])
     final_xy = float(np.hypot(final_x, final_y))
 
+    action_sign_flip_rate = _compute_action_sign_flip_rate(action_history)
+    last_window_displacement = _compute_last_window_displacement(
+        cube_xy_history, _DISPLACEMENT_WINDOW_STEPS
+    )
+    terminal_eef_distance = _compute_terminal_eef_distance(
+        gripper_xy_fn, env, final_cube_state[:2]
+    )
+
     return RolloutResult(
         seed_group=seed_group,
         rollout_idx=rollout_idx,
@@ -187,4 +274,8 @@ def run_rollout(
         final_cube_x=final_x,
         final_cube_y=final_y,
         final_cube_xy_dist=final_xy,
+        action_sign_flip_rate=action_sign_flip_rate,
+        terminal_eef_xy_distance_m=terminal_eef_distance,
+        contact_made=contact_made,
+        last_50_step_cube_displacement_m=last_window_displacement,
     )

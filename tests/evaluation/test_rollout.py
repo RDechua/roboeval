@@ -242,3 +242,180 @@ def test_rollout_custom_success_detected_via_high_cube():
     )
     assert result.success_custom is True
     assert result.success_step == 3  # 1-based at first detection (dwell=3 → step 3)
+
+
+# --- Trajectory-aggregate tests (Week 5) -----------------------------------
+
+
+class _AlternatingSignPolicy:
+    """Returns +1, -1, +1, -1, ... — every step is a sign flip across all dims."""
+
+    policy_id = "alternating"
+    device = "cpu"
+
+    def __init__(self, action_dim: int = 14):
+        self._action_dim = action_dim
+        self._t = 0
+
+    def reset(self) -> None:
+        self._t = 0
+
+    def select_action(self, observation):
+        del observation
+        sign = 1.0 if self._t % 2 == 0 else -1.0
+        self._t += 1
+        return np.full(self._action_dim, sign, dtype=np.float32)
+
+
+def test_rollout_action_sign_flip_rate_zero_for_constant_action():
+    env = MockEnv(success_after_n=100, max_steps=10)
+    result = run_rollout(
+        env=env,
+        policy=MockPolicy(),  # constant zero action
+        success_detector=TransferCubeSuccessDetector(_crit()),
+        seed_group=0,
+        rollout_idx=0,
+        episode_seed=0,
+        max_steps=10,
+        cube_state_fn=_fake_cube_state,
+    )
+    assert result.action_sign_flip_rate == 0.0
+
+
+def test_rollout_action_sign_flip_rate_one_for_alternating_action():
+    env = MockEnv(success_after_n=100, max_steps=10)
+    result = run_rollout(
+        env=env,
+        policy=_AlternatingSignPolicy(),
+        success_detector=TransferCubeSuccessDetector(_crit()),
+        seed_group=0,
+        rollout_idx=0,
+        episode_seed=0,
+        max_steps=10,
+        cube_state_fn=_fake_cube_state,
+    )
+    # Every step except the first is a sign flip across every dim.
+    assert result.action_sign_flip_rate == pytest.approx(1.0)
+
+
+def test_rollout_records_contact_made_when_contact_fn_fires():
+    env = MockEnv(success_after_n=100, max_steps=10)
+    calls = {"n": 0}
+
+    def fake_contact(env):
+        del env
+        calls["n"] += 1
+        return calls["n"] == 5  # fire once mid-episode
+
+    result = run_rollout(
+        env=env,
+        policy=MockPolicy(),
+        success_detector=TransferCubeSuccessDetector(_crit()),
+        seed_group=0,
+        rollout_idx=0,
+        episode_seed=0,
+        max_steps=10,
+        cube_state_fn=_fake_cube_state,
+        contact_fn=fake_contact,
+    )
+    assert result.contact_made is True
+
+
+def test_rollout_contact_made_false_when_contact_fn_never_fires():
+    env = MockEnv(success_after_n=100, max_steps=10)
+    result = run_rollout(
+        env=env,
+        policy=MockPolicy(),
+        success_detector=TransferCubeSuccessDetector(_crit()),
+        seed_group=0,
+        rollout_idx=0,
+        episode_seed=0,
+        max_steps=10,
+        cube_state_fn=_fake_cube_state,
+        contact_fn=lambda env: False,
+    )
+    assert result.contact_made is False
+
+
+def test_rollout_terminal_eef_xy_distance_uses_closer_gripper():
+    env = MockEnv(success_after_n=5, max_steps=10)
+
+    def cube_at_origin(env):
+        return np.array([0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0], dtype=np.float64)
+
+    def grippers_left_far_right_near(env):
+        del env
+        left = np.array([1.0, 0.0], dtype=np.float64)
+        right = np.array([0.03, 0.04], dtype=np.float64)  # distance 0.05
+        return left, right
+
+    result = run_rollout(
+        env=env,
+        policy=MockPolicy(),
+        success_detector=TransferCubeSuccessDetector(_crit()),
+        seed_group=0,
+        rollout_idx=0,
+        episode_seed=0,
+        max_steps=10,
+        cube_state_fn=cube_at_origin,
+        gripper_xy_fn=grippers_left_far_right_near,
+    )
+    assert result.terminal_eef_xy_distance_m == pytest.approx(0.05, abs=1e-6)
+
+
+def test_rollout_terminal_eef_xy_distance_is_none_when_accessor_returns_none():
+    env = MockEnv(success_after_n=5, max_steps=10)
+    result = run_rollout(
+        env=env,
+        policy=MockPolicy(),
+        success_detector=TransferCubeSuccessDetector(_crit()),
+        seed_group=0,
+        rollout_idx=0,
+        episode_seed=0,
+        max_steps=10,
+        cube_state_fn=_fake_cube_state,
+        gripper_xy_fn=lambda env: None,
+    )
+    assert result.terminal_eef_xy_distance_m is None
+
+
+def test_rollout_last_50_step_cube_displacement_short_window():
+    # Run for 6 steps with cube moving 0.01 m in +y per step; window collapses
+    # to the full episode (6 steps < 50), so the displacement = 5 * 0.01 = 0.05.
+    env = MockEnv(success_after_n=100, max_steps=6)
+    step_counter = {"n": 0}
+
+    def drifting_cube(env):
+        del env
+        y = 0.01 * step_counter["n"]
+        step_counter["n"] += 1
+        return np.array([0.0, y, 0.0, 1.0, 0.0, 0.0, 0.0], dtype=np.float64)
+
+    result = run_rollout(
+        env=env,
+        policy=MockPolicy(),
+        success_detector=TransferCubeSuccessDetector(_crit()),
+        seed_group=0,
+        rollout_idx=0,
+        episode_seed=0,
+        max_steps=6,
+        cube_state_fn=drifting_cube,
+    )
+    # 7 cube samples recorded (1 pre-step + 6 post-step), so displacement
+    # spans steps 0..6, i.e. 6 * 0.01 = 0.06 m.
+    assert result.last_50_step_cube_displacement_m == pytest.approx(0.06, abs=1e-6)
+
+
+def test_rollout_last_50_step_cube_displacement_zero_for_static_cube():
+    env = MockEnv(success_after_n=100, max_steps=10)
+    result = run_rollout(
+        env=env,
+        policy=MockPolicy(),
+        success_detector=TransferCubeSuccessDetector(_crit()),
+        seed_group=0,
+        rollout_idx=0,
+        episode_seed=0,
+        max_steps=10,
+        cube_state_fn=_fake_cube_state,
+    )
+    assert result.last_50_step_cube_displacement_m == 0.0

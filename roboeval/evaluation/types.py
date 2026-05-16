@@ -46,6 +46,22 @@ class RolloutResult:
             is the same number when ``target_xy=(0,0)``.
         failure_mode: Free-form label written by the failure-taxonomy
             classifier (Week 5). Empty string for Week 2 baseline runs.
+        action_sign_flip_rate: Fraction of ``(step, action_dim)`` pairs at
+            which the action sign flipped between consecutive steps —
+            i.e. ``mean(sign(a_t) * sign(a_{t-1}) < 0)`` over all
+            timesteps and dims. ``0.0`` for episodes shorter than two
+            steps. Drives the PRD §7.2 Oscillation rule.
+        terminal_eef_xy_distance_m: Minimum xy distance (metres) between
+            the cube and either gripper-link body at the final step.
+            ``None`` if dm_control physics isn't exposed (mock envs).
+            Drives the PRD §7.2 Approach Failure rule.
+        contact_made: Whether the cube ever touched a gripper finger at
+            any point during the episode. Drives the PRD §7.2 Grasp
+            Failure rule (contact without lift).
+        last_50_step_cube_displacement_m: Euclidean xy displacement of the
+            cube between the step ``min(50, n_steps)`` before the end and
+            the final step (metres). Drives the PRD §7.2 Recovery /
+            quiescence rule.
     """
 
     seed_group: int
@@ -64,6 +80,10 @@ class RolloutResult:
     final_cube_y: float
     final_cube_xy_dist: float
     failure_mode: str = ""
+    action_sign_flip_rate: float = 0.0
+    terminal_eef_xy_distance_m: float | None = None
+    contact_made: bool = False
+    last_50_step_cube_displacement_m: float = 0.0
 
 
 @dataclass(frozen=True, slots=True)
