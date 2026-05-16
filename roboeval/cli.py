@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import logging
 from collections.abc import Sequence
+from typing import Any
 
 _LOG = logging.getLogger("roboeval.cli")
 
@@ -113,14 +114,14 @@ def _cmd_evaluate(config_path: str) -> int:
     from datetime import datetime
 
     try:
-        from omegaconf import OmegaConf
-
         from roboeval.envs.aloha import ALOHA_TRANSFER_CUBE_ID, make_aloha_env
+        from roboeval.envs.perturb import make_perturbed_env
         from roboeval.envs.success import (
             SuccessCriterion,
             TransferCubeSuccessDetector,
         )
         from roboeval.evaluation.calibration import register_calibration_resolver
+        from roboeval.evaluation.config import load_eval_config
         from roboeval.evaluation.logger import wandb_run
         from roboeval.evaluation.loop import evaluate_policy
         from roboeval.policies.factory import load_policy
@@ -130,11 +131,11 @@ def _cmd_evaluate(config_path: str) -> int:
         return 1
 
     # Register the `${calibration:...}` resolver so configs can interpolate
-    # frozen calibration values directly. Done before OmegaConf.load so
+    # frozen calibration values directly. Done before load_eval_config so
     # interpolation is resolved on access.
     register_calibration_resolver()
 
-    cfg = OmegaConf.load(config_path)
+    cfg = load_eval_config(config_path)
     target_xy_list = list(cfg.success.target_xy)
     criterion = SuccessCriterion(
         z_threshold_m=float(cfg.success.z_threshold_m),
@@ -162,6 +163,27 @@ def _cmd_evaluate(config_path: str) -> int:
 
     _LOG.info("Policy loaded on device=%s", policy.device)
 
+    # Optional perturbation block. When absent (or kind=='none') the env
+    # factory is the bare ALOHA env; when present we compose a wrapper
+    # via roboeval.envs.perturb.make_perturbed_env. Recording the kind +
+    # full param dict in the W&B config keeps every (axis, intensity)
+    # cell self-describing on the dashboard.
+    perturb_cfg = cfg.get("perturbation")
+    perturb_kind: str | None = None
+    perturb_params: dict[str, Any] = {}
+    if perturb_cfg is not None and str(perturb_cfg.get("kind", "none")) != "none":
+        perturb_kind = str(perturb_cfg.kind)
+        perturb_params = {k: v for k, v in dict(perturb_cfg).items() if k != "kind"}
+
+    def _env_factory() -> Any:
+        env = make_aloha_env(
+            task=str(cfg.env.task),
+            episode_length=int(cfg.env.episode_length),
+        )
+        if perturb_kind is not None:
+            return make_perturbed_env(env, kind=perturb_kind, **perturb_params)
+        return env
+
     run_name = f"{cfg.wandb.name_prefix}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     config_dict = {
         "policy_kind": str(cfg.policy.kind),
@@ -177,6 +199,8 @@ def _cmd_evaluate(config_path: str) -> int:
         "success_target_xy": list(criterion.target_xy),
         "episode_length": int(cfg.env.episode_length),
         "lerobot_version": "0.4.4",
+        "perturbation_kind": perturb_kind or "none",
+        "perturbation_params": perturb_params,
     }
 
     try:
@@ -191,10 +215,7 @@ def _cmd_evaluate(config_path: str) -> int:
                 _LOG.info("W&B run URL: %s", handle.url)
 
             result = evaluate_policy(
-                env_factory=lambda: make_aloha_env(
-                    task=str(cfg.env.task),
-                    episode_length=int(cfg.env.episode_length),
-                ),
+                env_factory=_env_factory,
                 policy=policy,
                 detector_factory=lambda: TransferCubeSuccessDetector(criterion),
                 seeds=list(cfg.eval.seeds),
