@@ -46,5 +46,9 @@ def test_wandb_run_disabled_mode_does_not_raise(tmp_path, monkeypatch):
         for r in rollouts:
             handle.log_rollout(r)
         handle.log_summary(eval_result)
+        handle.log_distribution({"success": 3, "timeout": 2})
         # disabled-mode wandb sets url to None; nothing to assert beyond no-raise.
         assert handle.url is None or isinstance(handle.url, str)
+        # run_id may be a string (synthetic id) or None depending on the
+        # wandb version; the only contract is "doesn't raise".
+        assert handle.run_id is None or isinstance(handle.run_id, str)

@@ -124,6 +124,27 @@ class WandbRunHandle:
         url = getattr(self._run, "url", None)
         return cast(str | None, url) if url else None
 
+    @property
+    def run_id(self) -> str | None:
+        """W&B run id; ``None`` if not assigned (e.g. disabled mode)."""
+        rid = getattr(self._run, "id", None)
+        return cast(str | None, rid) if rid else None
+
+    def log_distribution(self, distribution: Mapping[str, int]) -> None:
+        """Write failure-mode counts to run.summary.
+
+        PRD §7.3 step 5 ("per-policy failure distribution heatmap")
+        consumes these summary scalars when building the cell-by-cell
+        heatmap across runs.
+
+        Args:
+            distribution: ``{bucket_name: count}`` from
+                :func:`roboeval.taxonomy.io.compute_distribution`.
+        """
+        summary = self._run.summary
+        for bucket, count in distribution.items():
+            summary[f"failure_dist/{bucket}"] = count
+
 
 def _upload_config_artifact(run: Any, config: Mapping[str, Any], name: str) -> None:
     """Save the run config as a JSON artifact for reproducibility.
