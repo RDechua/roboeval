@@ -45,7 +45,7 @@ Phase 4 residual-RL target** (59% Recovery, deterministic, geometric).
 
 - Python 3.11, `mypy --strict`, ruff, `lerobot==0.4.4`, MuJoCo+gym-aloha,
   Stable-Baselines3, Hydra (OmegaConf), W&B, matplotlib, Plotly+Dash.
-- **24 source files** in `roboeval/` + `scripts/`, **110 tests passing**.
+- **25 source files** in `roboeval/` + `scripts/`, **137 tests passing**.
 - CI: ruff + ruff-format + mypy + pytest on push/PR, CPU-only torch wheel.
 
 ## Module map
@@ -56,7 +56,7 @@ roboeval/
 │                               # auto-classifies + writes auto_labels JSON
 ├── envs/aloha.py              # env factory + cube_state + gripper_xy + contact
 ├── envs/success.py            # geometric detector; no defaults, all fields required
-├── envs/perturb.py            # SpatialShiftWrapper + factory (visual/dyn/temp stubbed)
+├── envs/perturb.py            # Spatial + Temporal wrappers; visual/dynamic stubbed
 ├── evaluation/types.py        # RolloutResult (20 fields incl. 4 trajectory aggregates)
 ├── evaluation/rollout.py      # run_rollout w/ trajectory-aggregate helpers; injectable
 ├── evaluation/loop.py         # multi-seed evaluate_policy
@@ -78,7 +78,8 @@ scripts/
 
 configs/
 ├── baseline/act_nominal{,_fast,_mps_check}.yaml
-└── perturbation/spatial/act_spatial_y+{1,3,5}cm.yaml
+├── perturbation/spatial/act_spatial_y{+,-}{1,3,5}cm.yaml  # 6 cells, -5 to +5 cm
+└── perturbation/temporal/act_temporal_delay_{1,3,5}steps.yaml  # 3 cells
 
 data/
 ├── calibration/transfer_cube_target_xy.json    # frozen calibration artifact
@@ -91,9 +92,10 @@ docs/figures/spatial_failure_distribution.png   # §6.4 headline figure
 
 - **G1 Foundation** ✓ CI green, MPS verified, smoke runs
 - **G2 Baseline** ✓ 80% TSR within ±5 pp of model card 83%, σ=5.7% < 7%
-- **G3 Robustness & Taxonomy** ⏳ spatial 3/~6 cells with full taxonomy
-  distribution; visual/dynamic/temporal not started; all 6 classifier
-  rules wired + auto-labels artifact produced per eval run
+- **G3 Robustness & Taxonomy** ⏳ spatial 3/6 cells run; 3 negative cells
+  scaffolded; temporal wrapper + 3 cells scaffolded (not yet run);
+  visual/dynamic not started; all 6 classifier rules wired + auto-labels
+  artifact produced per eval run
 - **G4 Residual RL** — not started (Weeks 6–7)
 - **G5 Communication** — not started (Week 8)
 - **G6 Launch** — not started (Weeks 9–10)

@@ -131,10 +131,10 @@ def test_make_perturbed_env_unknown_kind_lists_supported():
         make_perturbed_env(base, kind="xyz")
 
 
-@pytest.mark.parametrize("kind", ["visual", "dynamic", "temporal"])
+@pytest.mark.parametrize("kind", ["visual", "dynamic"])
 def test_make_perturbed_env_reserved_kinds_raise_not_implemented(kind: str):
     base = _MockAlohaLikeEnv()
-    with pytest.raises(NotImplementedError, match=r"Week 4"):
+    with pytest.raises(NotImplementedError, match=r"Week 6"):
         make_perturbed_env(base, kind=kind)
 
 
@@ -147,3 +147,128 @@ def test_make_perturbed_env_spatial_defaults_to_zero_shift():
     ix, iy = _cube_xy_indices()
     assert base._env.physics.data.qpos[ix] == pytest.approx(0.10)
     assert base._env.physics.data.qpos[iy] == pytest.approx(0.20)
+
+
+# --- TemporalDelayWrapper tests --------------------------------------------
+
+
+class _RecordingStepEnv(gym.Env[Any, Any]):
+    """Records every action handed to step() so tests can assert ordering."""
+
+    metadata: ClassVar[dict[str, Any]] = {"render_modes": []}
+
+    def __init__(self, action_dim: int = 14) -> None:
+        agent_pos = spaces.Box(low=-1, high=1, shape=(action_dim,), dtype=np.float64)
+        self.observation_space = spaces.Dict({"agent_pos": agent_pos})
+        self.action_space = spaces.Box(
+            low=-1, high=1, shape=(action_dim,), dtype=np.float32
+        )
+        self.received: list[np.ndarray] = []
+
+    def reset(self, *, seed=None, options=None):  # type: ignore[no-untyped-def]
+        super().reset(seed=seed)
+        self.received.clear()
+        return {"agent_pos": np.zeros(14, dtype=np.float64)}, {"is_success": False}
+
+    def step(self, action):  # type: ignore[no-untyped-def]
+        self.received.append(np.asarray(action).copy())
+        return (
+            {"agent_pos": np.zeros(14, dtype=np.float64)},
+            0,
+            False,
+            False,
+            {"is_success": False},
+        )
+
+
+def _make_marker(value: float, dim: int = 14) -> np.ndarray:
+    """A constant-valued action vector usable as a distinct marker per step."""
+    return np.full(dim, value, dtype=np.float32)
+
+
+def test_temporal_delay_zero_is_identity():
+    from roboeval.envs.perturb import TemporalDelayWrapper
+
+    env = _RecordingStepEnv()
+    wrapped = TemporalDelayWrapper(env, delay_steps=0)
+    wrapped.reset(seed=0)
+    a = _make_marker(0.5)
+    wrapped.step(a)
+    assert np.array_equal(env.received[0], a)
+
+
+def test_temporal_delay_one_step_first_action_is_zero_then_policy_action():
+    from roboeval.envs.perturb import TemporalDelayWrapper
+
+    env = _RecordingStepEnv()
+    wrapped = TemporalDelayWrapper(env, delay_steps=1)
+    wrapped.reset(seed=0)
+    a0 = _make_marker(0.1)
+    a1 = _make_marker(0.2)
+    wrapped.step(a0)
+    wrapped.step(a1)
+    # First env.step receives the buffer-prefill zero; second receives a0.
+    assert np.array_equal(env.received[0], np.zeros(14, dtype=np.float32))
+    assert np.array_equal(env.received[1], a0)
+
+
+def test_temporal_delay_three_steps_drains_buffer_in_order():
+    from roboeval.envs.perturb import TemporalDelayWrapper
+
+    env = _RecordingStepEnv()
+    wrapped = TemporalDelayWrapper(env, delay_steps=3)
+    wrapped.reset(seed=0)
+    actions = [_make_marker(0.1 * (i + 1)) for i in range(6)]
+    for a in actions:
+        wrapped.step(a)
+    # First 3 env steps see zeros; steps 4-6 see actions 1-3.
+    for i in range(3):
+        assert np.array_equal(env.received[i], np.zeros(14, dtype=np.float32))
+    for i in range(3):
+        assert np.array_equal(env.received[i + 3], actions[i])
+
+
+def test_temporal_delay_reset_refills_buffer_with_zeros():
+    from roboeval.envs.perturb import TemporalDelayWrapper
+
+    env = _RecordingStepEnv()
+    wrapped = TemporalDelayWrapper(env, delay_steps=2)
+    wrapped.reset(seed=0)
+    wrapped.step(_make_marker(0.7))  # pushes 0.7, env sees zero
+    wrapped.step(_make_marker(0.8))  # pushes 0.8, env sees zero
+    # If we DIDN'T reset, the next step would see 0.7. Reset must clear.
+    wrapped.reset(seed=0)
+    wrapped.step(_make_marker(0.9))  # env sees a fresh zero, NOT 0.7
+    assert np.array_equal(env.received[-1], np.zeros(14, dtype=np.float32))
+
+
+def test_temporal_delay_negative_raises():
+    from roboeval.envs.perturb import TemporalDelayWrapper
+
+    with pytest.raises(ValueError, match=r"delay_steps must be >= 0"):
+        TemporalDelayWrapper(_RecordingStepEnv(), delay_steps=-1)
+
+
+def test_temporal_delay_exposes_delay_steps_property():
+    from roboeval.envs.perturb import TemporalDelayWrapper
+
+    wrapped = TemporalDelayWrapper(_RecordingStepEnv(), delay_steps=5)
+    assert wrapped.delay_steps == 5
+
+
+def test_make_perturbed_env_dispatches_to_temporal():
+    from roboeval.envs.perturb import TemporalDelayWrapper
+
+    base = _RecordingStepEnv()
+    out = make_perturbed_env(base, kind="temporal", delay_steps=3)
+    assert isinstance(out, TemporalDelayWrapper)
+    assert out.delay_steps == 3
+
+
+def test_make_perturbed_env_temporal_defaults_to_zero_delay():
+    """A config omitting delay_steps gets identity behaviour, not an error."""
+    from roboeval.envs.perturb import TemporalDelayWrapper
+
+    out = make_perturbed_env(_RecordingStepEnv(), kind="temporal")
+    assert isinstance(out, TemporalDelayWrapper)
+    assert out.delay_steps == 0

@@ -1,0 +1,13 @@
+# Temporal perturbation cell: actions delayed by 5 steps. PRD §6.4
+# temporal axis, intensity 3 (largest in the suite). Expected impact:
+# noticeable -- the cube state at execution time is 5 sim steps stale
+# compared to what the policy planned for.
+extends: configs/baseline/act_nominal.yaml
+
+perturbation:
+  kind: temporal
+  delay_steps: 5
+
+wandb:
+  name_prefix: act_temporal_delay_5steps
+  tags: [week5, perturbation, temporal, act, delay_5steps]

@@ -1,0 +1,14 @@
+# Temporal perturbation cell: actions delayed by 1 step before reaching
+# the env. PRD §6.4 temporal axis, intensity 1. Models the smallest
+# observable actuation latency. Expected impact: minor (ACT chunks
+# actions in ~100-step windows, so 1 step of delay should mostly be
+# absorbed by the chunk-averaging).
+extends: configs/baseline/act_nominal.yaml
+
+perturbation:
+  kind: temporal
+  delay_steps: 1
+
+wandb:
+  name_prefix: act_temporal_delay_1step
+  tags: [week5, perturbation, temporal, act, delay_1step]
