@@ -66,6 +66,10 @@ def test_emit_markdown_table_includes_cell_and_pct():
 
 
 def test_render_figure_writes_png(tmp_path):
+    # matplotlib is only in the dev/runtime deps, not in CI's minimal
+    # install. Skip on CI rather than fail-import; the pure-function
+    # tests above still verify the data-prep path.
+    pytest.importorskip("matplotlib")
     cells = [
         ("nominal", {"success": 120, "timeout": 28, "needs_review": 2}, 150),
         ("+5cm", {"success": 46, "recovery_failure": 89, "needs_review": 13}, 150),
