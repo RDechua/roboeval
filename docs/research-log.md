@@ -523,3 +523,110 @@ If the heatmap reader wants the "raw" Timeout count for perturbed cells, it's `R
 - **Visual / dynamic / temporal axes** — perturbation wrappers stubbed; STATE.md step 5+.
 - **Manual audit of needs_review rollouts** — ~5 from the +5 cm cell would tell us whether to tighten Recovery's sign-flip threshold (currently 0.05) or split off a new category for "motion without engagement".
 
+
+## Week 5 — 2026-05-17 (Day 2: negative spatial cells + axis asymmetry)
+
+Ran the 3 negative-y cells on M1 (-1, -3, -5 cm), regenerated the §6.4 figure spanning the full ±5 cm. Auto-classify in `_cmd_evaluate` produced `data/taxonomy/auto_labels_<run_id>.json` for each cell inline; no relabel needed.
+
+### 7-cell spatial axis
+
+| cell | n | mean_tsr | σ | Success | Recovery | Approach | Needs review |
+|---|---|---|---|---|---|---|---|
+| **−5cm** (18xb5ob0) | 150 | 0.127 | 0.009 | 19 (12.7%) | 121 (80.7%) | 7 (4.7%) | 3 (2.0%) |
+| −3cm (11ugk2a3) | 150 | 0.553 | 0.025 | 83 (55.3%) | 63 (42.0%) | 0 | 4 (2.7%) |
+| −1cm (1usoqyez) | 150 | 0.827 | 0.034 | 124 (82.7%) | 26 (17.3%) | 0 | 0 |
+| nominal (cm6uf89g) | 150 | 0.800 | 0.057 | 120 (80.0%) | 0 (28 Timeout) | 0 | 2 (1.3%) |
+| +1cm (p2pltgd8) | 150 | 0.720 | 0.102 | 108 (72.0%) | 37 (24.7%) | 0 | 5 (3.3%) |
+| +3cm (miuy4kux) | 150 | 0.553 | 0.041 | 83 (55.3%) | 56 (37.3%) | 1 (0.7%) | 10 (6.7%) |
+| **+5cm** (alr0r0p2) | 150 | 0.307 | 0.019 | 46 (30.7%) | 89 (59.3%) | 1 (0.7%) | 13 (8.7%) |
+
+Figure regenerated at `docs/figures/spatial_failure_distribution.png` (7 bars).
+
+### Asymmetric degradation, non-monotonic at small magnitudes
+
+Distance from nominal TSR:
+
+| Δy | TSR | ΔTSR vs nominal |
+|---|---|---|
+| −5 cm | 0.127 | −0.673 |
+| −3 cm | 0.553 | −0.247 |
+| −1 cm | 0.827 | **+0.027** |
+| 0     | 0.800 | 0 |
+| +1 cm | 0.720 | −0.080 |
+| +3 cm | 0.553 | −0.247 |
+| +5 cm | 0.307 | −0.493 |
+
+Three things stand out:
+
+1. **At ±1 cm the curve is asymmetric in *direction***: −1 cm is +2.7 pp better than nominal (within noise, σ ≈ 0.05), but +1 cm is −8.0 pp worse (≈ 1.4 σ — meaningful). At small magnitudes the policy tolerates negative shifts but not positive.
+2. **At ±3 cm the curve is matched** (both at 0.553, identical to two decimals). Negative direction "catches up" and they collide.
+3. **At ±5 cm the asymmetry has *reversed*** — −5 cm is now dramatically worse than +5 cm (0.127 vs 0.307, a 17.9 pp gap). The negative-direction degradation accelerates between −3 → −5 cm (drop of 0.426) far faster than positive between +3 → +5 cm (drop of 0.246).
+
+The story is the asymmetry flipping direction as magnitude grows: small +y is harder, large −y is much harder.
+
+### Mechanism hypothesis (open question)
+
+The cube starts at approximately (0, 0.5) and the calibrated transfer-target is (-0.018, 0.506) — i.e. the cube barely moves in y during a successful transfer. Demonstrations cluster narrowly around this nominal geometry. Speculative reading:
+
+- **Small +y (cube at y ≈ 0.51)** crosses into a region the right arm rarely picks up from in demos — first contact phase is the wedge that breaks.
+- **Small −y (cube at y ≈ 0.49)** stays within the right-arm's habituated reach pattern, so first-contact succeeds; the asymmetry-reversal at larger magnitude is then a second-stage failure (the *transfer* arm doesn't know how to receive at the shifted y).
+- **Large −y (cube at y ≈ 0.45)** simultaneously breaks right-arm pickup AND left-arm receive — both stages fail, hence the steeper drop.
+
+A controlled experiment to confirm would freeze the left arm at its nominal demo trajectory and only perturb right-arm initial state; or vice versa. Out of scope for Week 5 — flagged as a follow-up.
+
+### Approach-failure morphology at −5cm
+
+Of the 121 failed −5cm rollouts, 7 (4.7%) are Approach (EE > 5cm from cube terminal). At +5cm only 1 (0.7%) is Approach. This says that at large negative shifts the policy actually *reaches past* where it expects the cube to be — the gripper terminates further from the (shifted-away) cube than the 5 cm threshold. At +5cm the policy still reaches the nominal-vicinity position, which happens to be within 5 cm of the (shifted-toward-receptacle) cube.
+
+Mechanically this means residual RL on the −5cm cell would need to learn to **not over-reach**, which is a different correction signal than +5cm's "extend the reach a little further". Residual policies likely don't transfer between cells — Phase 4 may need per-cell fine-tunes, or a multi-cell joint training mix.
+
+### σ collapse is more aggressive on the negative side
+
+| Δy | σ | Bernoulli SE √(p(1−p)/N) |
+|---|---|---|
+| −5 cm | 0.009 | 0.027 (over-determined by 3×) |
+| −3 cm | 0.025 | 0.041 (sub-Bernoulli) |
+| −1 cm | 0.034 | 0.031 |
+| 0 cm  | 0.057 | 0.033 |
+| +1 cm | 0.102 | 0.037 (super-Bernoulli) |
+| +3 cm | 0.041 | 0.041 (Bernoulli) |
+| +5 cm | 0.019 | 0.038 (sub-Bernoulli) |
+
+Positive side starts variable (+1 cm σ ≈ 2.8× the Bernoulli floor — seed-to-seed *unpredictable* whether the policy adapts), collapses to deterministic by +5. Negative side is deterministic at every magnitude — same trajectory every seed. Doesn't suggest a different mechanism so much as: the +y "boundary regime" where demos and policy are stretched thin, vs the −y "out-of-distribution" regime where the policy reverts to a single canonical failure mode.
+
+### needs_review fraction
+
+| Δy | needs_review |
+|---|---|
+| −5, −3, −1 | 2.0%, 2.7%, 0% |
+| 0 | 1.3% |
+| +1, +3, +5 | 3.3%, 6.7%, 8.7% |
+
+The classifier rules fire cleanly on the negative side (lower fractions) and degrade with positive shift. Likely a manifestation of the same "+y is the unstable boundary" pattern — those rollouts have *some* motion, just not the right motion, so they fail the Recovery rule's "quiet policy" test and land in needs_review.
+
+### Phase 4 base-policy selection re-evaluated
+
+Updated takeaway from Week 5 Day 1 (when only +y cells existed): **the residual-RL target depends on which failure pattern is most tractable**, not just which cell has the largest TSR delta:
+
+- **+5cm (59% Recovery, 0% Approach)**: Stalled near target. Residual needs a small "continue forward" signal. Most tractable.
+- **−5cm (81% Recovery, 5% Approach)**: Stalled but ALSO over-reaching. Residual needs both "extend toward cube" AND "don't over-extend". Harder. Recovery is higher (more headroom) but the failure space is multi-modal.
+- **+3cm and −3cm (matched ~55% Success, ~40% Recovery)**: Same residual-RL signal as +5cm but with more TSR baseline already.
+
+If Phase 4 picks one cell, +5cm remains the cleanest target. If Phase 4 picks a mix, +3 / +5 / −3 makes a coherent set (single failure mode, growing magnitude). Adding −5 introduces a second failure pattern (Approach) that doubles the residual's policy-space-to-learn.
+
+### What's actually new in this entry
+
+- Negative-y degradation curve confirms the spatial axis is **not isotropic** — direction matters as much as magnitude.
+- The Day 1 conclusion ("Recovery is the dominant failure under perturbation") generalises across both directions but the second-order asymmetry is a Phase 4 design input.
+- Approach-failure emergence at −5cm is the first per-cell *qualitative* shift; everywhere else the failure is Recovery.
+
+### Open
+
+- **Mechanism behind the asymmetry direction-flip** (small +y harder, large −y much harder). Needs per-arm initial-state isolation — not before Phase 4.
+- **Asymmetric residual-RL targets**: do we train separate residuals per cell or one shared residual across all spatial cells? Empirical question — start with single-cell, add the joint mix if performance allows.
+- **Cross-session `mean_tsr_custom` drift** still unresolved (nominal: 0.680 → 0.727). Determinism regression passed on mock env; real-env reproducibility audit is still TBD.
+
+### Next session intent
+
+Same as STATE.md step 4 → temporal axis runs (3 cells, configs already in repo from earlier in the day). After temporal we have 2 axes × 3+ cells, enough material to draft the §6.4 multi-axis comparison.
+
