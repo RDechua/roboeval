@@ -1,10 +1,11 @@
 """Perturbation env wrappers for the PRD §6.4 robustness suite.
 
-v1.0 ships only the **spatial** axis (cube initial-position shift).
-The other three axes (visual lighting + distractor; dynamic mid-rollout
-push; temporal action-delay) have placeholder factory branches that
-raise :class:`NotImplementedError` so a config requesting them fails
-loudly at load time rather than silently running nominal.
+v1.1 ships the **spatial** axis (cube initial-position shift) and the
+**temporal** axis (action delay). The remaining two axes (visual
+lighting + distractor; dynamic mid-rollout push) have placeholder
+factory branches that raise :class:`NotImplementedError` so a config
+requesting them fails loudly at load time rather than silently running
+nominal.
 
 Each axis follows the same contract: a ``gym.Wrapper`` that the
 ``env_factory`` callable in :mod:`roboeval.cli` composes onto a freshly
@@ -20,9 +21,12 @@ its kwargs.
 
 from __future__ import annotations
 
+from collections import deque
 from typing import Any, Literal, get_args
 
 import gymnasium as gym
+import numpy as np
+import numpy.typing as npt
 
 # Cube qpos slice — same convention as :mod:`roboeval.envs.aloha`. The cube's
 # 7-element free-joint state occupies the LAST 7 entries of physics.data.qpos
@@ -96,12 +100,86 @@ class SpatialShiftWrapper(gym.Wrapper[Any, Any, Any, Any]):
         return obs, info
 
 
+class TemporalDelayWrapper(gym.Wrapper[Any, Any, Any, Any]):
+    """Delay every action by a fixed number of steps before it reaches the env.
+
+    Implements the PRD §6.4 temporal axis. Models actuation latency:
+    at step ``t``, the underlying env executes the action the policy
+    emitted at step ``t - delay_steps``. For the first ``delay_steps``
+    of every episode, the env executes a zero action (the centre of
+    ALOHA's ``Box(-1, 1)`` action space) since no policy action is
+    yet eligible to be released.
+
+    The delay is **deterministic** (same delay every step, same
+    initial fill every reset) so reproducibility holds across same-seed
+    runs — the perturbation contributes a known systematic latency,
+    not jitter. ``delay_steps == 0`` reduces to identity.
+    """
+
+    def __init__(self, env: gym.Env[Any, Any], delay_steps: int) -> None:
+        """Construct a temporal-delay wrapper.
+
+        Args:
+            env: An ALOHA env (typically from
+                :func:`roboeval.envs.aloha.make_aloha_env`).
+            delay_steps: Non-negative integer step delay. ``0`` is
+                identity (no buffering).
+
+        Raises:
+            ValueError: If ``delay_steps`` is negative.
+        """
+        super().__init__(env)
+        if delay_steps < 0:
+            raise ValueError(f"delay_steps must be >= 0; got {delay_steps}")
+        self._delay_steps = int(delay_steps)
+        self._buffer: deque[npt.NDArray[Any]] = deque()
+
+    @property
+    def delay_steps(self) -> int:
+        """Read-only step delay (for logging/diagnostics)."""
+        return self._delay_steps
+
+    def _zero_action(self) -> npt.NDArray[Any]:
+        """Build a zero action matching the underlying env's action_space."""
+        space = self.action_space
+        shape = space.shape if space.shape is not None else (0,)
+        dtype = getattr(space, "dtype", None) or np.float32
+        return np.zeros(shape, dtype=dtype)
+
+    def reset(
+        self,
+        *,
+        seed: int | None = None,
+        options: dict[str, Any] | None = None,
+    ) -> tuple[Any, dict[str, Any]]:
+        """Reset the underlying env and refill the action buffer with zeros."""
+        obs, info = self.env.reset(seed=seed, options=options)
+        zero = self._zero_action()
+        self._buffer = deque(zero.copy() for _ in range(self._delay_steps))
+        return obs, info
+
+    def step(
+        self, action: npt.NDArray[Any]
+    ) -> tuple[Any, Any, bool, bool, dict[str, Any]]:
+        """Forward a delayed action to the underlying env.
+
+        For ``delay_steps == 0`` this is identity. Otherwise the latest
+        action is pushed onto the buffer and the oldest is popped and
+        executed; the buffer length is invariant at ``delay_steps``.
+        """
+        if self._delay_steps == 0:
+            return self.env.step(action)
+        self._buffer.append(np.asarray(action).copy())
+        delayed = self._buffer.popleft()
+        return self.env.step(delayed)
+
+
 def _make_visual_wrapper(env: gym.Env[Any, Any], **params: Any) -> gym.Env[Any, Any]:
     """Placeholder for the visual perturbation axis (PRD §6.4)."""
     del env, params
     raise NotImplementedError(
         "visual perturbation (lighting ±30/60%, distractor) lands later in "
-        "Week 4. Use kind='spatial' for now."
+        "Week 6. Use kind='spatial' or kind='temporal' for now."
     )
 
 
@@ -110,17 +188,8 @@ def _make_dynamic_wrapper(env: gym.Env[Any, Any], **params: Any) -> gym.Env[Any,
     del env, params
     raise NotImplementedError(
         "dynamic perturbation (mid-rollout cube push at 25/50/75% of "
-        "nominal completion) lands later in Week 4. Requires a "
+        "nominal completion) lands later in Week 6. Requires a "
         "perturbation_callback hook in run_rollout."
-    )
-
-
-def _make_temporal_wrapper(env: gym.Env[Any, Any], **params: Any) -> gym.Env[Any, Any]:
-    """Placeholder for the temporal perturbation axis (PRD §6.4)."""
-    del env, params
-    raise NotImplementedError(
-        "temporal perturbation (action delay 1/3/5 steps) lands later in "
-        "Week 4. Trivial: a collections.deque in front of env.step."
     )
 
 
@@ -166,7 +235,10 @@ def make_perturbed_env(
     if kind == "dynamic":
         return _make_dynamic_wrapper(env, **params)
     if kind == "temporal":
-        return _make_temporal_wrapper(env, **params)
+        return TemporalDelayWrapper(
+            env,
+            delay_steps=int(params.get("delay_steps", 0)),
+        )
     raise AssertionError(f"unhandled supported kind: {kind!r}")
 
 
@@ -182,5 +254,6 @@ def _cube_xy_indices() -> tuple[int, int]:
 __all__ = [
     "PerturbationKind",
     "SpatialShiftWrapper",
+    "TemporalDelayWrapper",
     "make_perturbed_env",
 ]

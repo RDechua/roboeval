@@ -1,0 +1,11 @@
+# Temporal perturbation cell: actions delayed by 3 steps. PRD §6.4
+# temporal axis, intensity 2.
+extends: configs/baseline/act_nominal.yaml
+
+perturbation:
+  kind: temporal
+  delay_steps: 3
+
+wandb:
+  name_prefix: act_temporal_delay_3steps
+  tags: [week5, perturbation, temporal, act, delay_3steps]

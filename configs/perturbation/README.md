@@ -11,7 +11,7 @@ Run a cell with: `roboeval evaluate --config configs/perturbation/<axis>/<cell>.
 | **spatial** | `roboeval.envs.perturb.SpatialShiftWrapper` | `spatial/act_spatial_y{+,-}{1,3,5}cm.yaml` (6 cells) | ✅ implemented |
 | visual | `_make_visual_wrapper` (NotImplementedError) | (planned) `visual/act_visual_lighting_{plus,minus}{30,60}pct.yaml`, `visual/act_visual_distractor.yaml` | scaffolded, not implemented |
 | dynamic | `_make_dynamic_wrapper` (NotImplementedError) | (planned) `dynamic/act_dynamic_push_at_{25,50,75}pct.yaml` | scaffolded, not implemented |
-| temporal | `_make_temporal_wrapper` (NotImplementedError) | (planned) `temporal/act_temporal_delay_{1,3,5}steps.yaml` | scaffolded, not implemented |
+| **temporal** | `roboeval.envs.perturb.TemporalDelayWrapper` | `temporal/act_temporal_delay_{1,3,5}steps.yaml` (3 cells) | ✅ implemented |
 
 ## Planned cells (PRD §6.4)
 
