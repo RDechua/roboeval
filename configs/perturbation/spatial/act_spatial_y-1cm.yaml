@@ -1,0 +1,14 @@
+# Spatial perturbation cell: cube initial y-position shifted -1 cm.
+# PRD §6.4 spatial axis, intensity 1 (negative direction).
+# Mirrors act_spatial_y+1cm.yaml; together with the +y cells the 6-cell
+# spatial suite spans -5 cm to +5 cm.
+extends: configs/baseline/act_nominal.yaml
+
+perturbation:
+  kind: spatial
+  dx_m: 0.0
+  dy_m: -0.01
+
+wandb:
+  name_prefix: act_spatial_y-1cm
+  tags: [week5, perturbation, spatial, act, y-1cm]
