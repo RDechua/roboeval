@@ -93,6 +93,12 @@ def build_stack_arrays(
 def render_figure(
     cells: list[tuple[str, dict[str, int], int]],
     out_path: Path,
+    *,
+    title: str = (
+        "ACT failure-mode distribution across spatial perturbation\n"
+        "(3 seed groups, 50 rollouts per cell)"
+    ),
+    xlabel: str = "Spatial y-shift",
 ) -> Path:
     """Render the stacked-bar PNG to ``out_path``. Returns the same path."""
     import matplotlib
@@ -120,11 +126,8 @@ def render_figure(
         bottom = [b + v for b, v in zip(bottom, values, strict=True)]
     ax.set_ylim(0, 100)
     ax.set_ylabel("Fraction of rollouts (%)")
-    ax.set_xlabel("Spatial y-shift")
-    ax.set_title(
-        "ACT failure-mode distribution across spatial perturbation\n"
-        "(3 seed groups, 50 rollouts per cell)"
-    )
+    ax.set_xlabel(xlabel)
+    ax.set_title(title)
     ax.legend(
         loc="center left",
         bbox_to_anchor=(1.02, 0.5),
@@ -165,13 +168,26 @@ def main(argv: list[str] | None = None) -> int:
         default=Path("docs/figures/spatial_failure_distribution.png"),
         help="Output PNG path.",
     )
+    parser.add_argument(
+        "--title",
+        default=(
+            "ACT failure-mode distribution across spatial perturbation\n"
+            "(3 seed groups, 50 rollouts per cell)"
+        ),
+        help="Figure title.",
+    )
+    parser.add_argument(
+        "--xlabel",
+        default="Spatial y-shift",
+        help="X-axis label.",
+    )
     args = parser.parse_args(argv)
 
     cells: list[tuple[str, dict[str, int], int]] = []
     for label, json_path in args.cell:
         distribution, n = load_distribution(json_path)
         cells.append((label, distribution, n))
-    out_path = render_figure(cells, args.out)
+    out_path = render_figure(cells, args.out, title=args.title, xlabel=args.xlabel)
     print(f"Wrote {out_path}")
     return 0
 

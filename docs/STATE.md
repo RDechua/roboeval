@@ -1,4 +1,4 @@
-# RoboEval — Current State (2026-05-17, Week 5 Day 2)
+# RoboEval — Current State (2026-05-17, Week 5 Day 3)
 
 A tight session-handoff anchor. `docs/PRD.md` is "what we're building",
 `docs/research-log.md` is "what happened week-by-week", this file is
@@ -9,9 +9,11 @@ welcome (it's a snapshot, not a journal).
 
 Phase 3 (robustness study) in progress. Gates G1 (foundation) and G2
 (baseline) closed. Week 5 trajectory-data extension + classifier wire-up
-complete; **full spatial axis run (-5 → +5 cm, 7 cells)** with failure-
-mode distribution per cell. Temporal axis wrapper + 3 configs scaffolded
-but not yet run on M1.
+complete; **full spatial axis (−5 → +5 cm, 7 cells) and temporal axis
+(1/3/5 step delay, 3 cells) both run** with failure-mode distributions.
+Cross-axis finding: ACT's failure mode is policy-architecture-specific
+(both axes produce Recovery), but elasticity differs 4-6× (spatial brittle,
+temporal robust). Phase 4 base-policy target: +5cm.
 
 ## Headline numbers
 
@@ -25,6 +27,21 @@ but not yet run on M1.
 - Calibration: `target_xy = (-0.01835, 0.50576)`, `xy_tolerance_m = 0.02185`.
   Frozen at `data/calibration/transfer_cube_target_xy.json`.
   `dwell_steps = 1` (gym-aloha terminates on `reward==4` same-step).
+
+## Temporal degradation (Week 5, 3 cells + nominal)
+
+| delay | TSR | σ | Success | Recovery | Needs review |
+|---|---|---|---|---|---|
+| nominal | 0.800 | 0.057 | 80.0% | 0 (28 Timeout) | 1.3% |
+| 1 step  | 0.753 | 0.050 | 75.3% | 22.0% | 2.7% |
+| 3 steps | 0.767 | 0.068 | 76.7% | 21.3% | 2.0% |
+| 5 steps | 0.687 | 0.066 | 68.7% | 30.0% | 1.3% |
+
+Figures: `docs/figures/temporal_{failure_distribution,degradation_curve}.png`.
+Same Recovery-dominant failure mode as spatial; **TSR loses only 11 pp
+at 5-step delay vs 49 pp at +5cm spatial**. ACT's 100-step action chunking
++ temporal ensembling absorbs most of the latency. σ stays super-Bernoulli
+throughout — no competence collapse on this axis.
 
 ## Spatial degradation curve + failure-mode distribution (Weeks 4-5, 7 cells)
 
@@ -105,16 +122,19 @@ data/
 
 docs/figures/spatial_failure_distribution.png   # §6.4 panel A (stacked-bar)
 docs/figures/spatial_degradation_curve.png      # §6.4 panel B (TSR + SE floor)
+docs/figures/temporal_failure_distribution.png  # §6.4 temporal-axis panel A
+docs/figures/temporal_degradation_curve.png     # §6.4 temporal-axis panel B
 ```
 
 ## Quality gates (PRD §9.2)
 
 - **G1 Foundation** ✓ CI green, MPS verified, smoke runs
 - **G2 Baseline** ✓ 80% TSR within ±5 pp of model card 83%, σ=5.7% < 7%
-- **G3 Robustness & Taxonomy** ⏳ spatial 7/7 cells run (−5 → +5 cm
-  complete); temporal wrapper + 3 cells scaffolded (not yet run);
-  visual/dynamic not started; all 6 classifier rules wired + auto-labels
-  artifact produced per eval run
+- **G3 Robustness & Taxonomy** ⏳ spatial 7/7 cells + temporal 3/3 cells
+  run with full classifier output; visual/dynamic not started; all 6
+  classifier rules wired + auto-labels artifact produced per eval run.
+  PRD §7.3 step 4 relabel-sample exporter live; +5cm and -5cm samples
+  exported, unlock 2026-05-24.
 - **G4 Residual RL** — not started (Weeks 6–7)
 - **G5 Communication** — not started (Week 8)
 - **G6 Launch** — not started (Weeks 9–10)
@@ -148,21 +168,21 @@ docs/figures/spatial_degradation_curve.png      # §6.4 panel B (TSR + SE floor)
 
 ## Next session intent
 
-Week 5 Day 3 — temporal axis runs + multi-axis writeup prep:
+Week 5 → Week 6 transition. Phase 3 robustness data is sufficient for
+the PRD §6.4 writeup; Phase 4 residual RL can begin.
 
-1. Run the 3 temporal cells on M1 (~75 min):
-   `roboeval evaluate --config configs/perturbation/temporal/act_temporal_delay_{1,3,5}steps.yaml`.
-   Auto-classify writes labels per cell; no extra code needed.
-2. Render a temporal-axis figure (re-use `scripts/plot_failure_distribution.py`
-   with the 3 temporal cells + nominal). Likely a different stack
-   shape than spatial — action delay may produce more Oscillation /
-   Approach / mixed failures than Recovery, since the delayed-action
-   stream effectively asks the policy to operate on stale observations.
-3. Draft a 2-axis §6.4 paragraph comparing spatial (Recovery-dominant,
-   asymmetric) vs temporal (??). The contrast is the deliverable that
-   gives §6.4 a real cross-axis perspective rather than just
-   "spatial works".
-4. **Open question still**: cross-session `mean_tsr_custom` drift
-   (nominal: 0.680 → 0.727). Determinism regression on mock env passes;
-   real-env audit needs a same-session double-run on M1. Low priority
-   relative to the multi-axis writeup.
+1. **Draft PRD §6.4 prose** from the Week 5 Day 3 research-log entry's
+   four-point outline. Two-axis findings: same failure mode, different
+   elasticity, σ-collapse-vs-super-Bernoulli distinguishes the regimes.
+2. **Phase 4 base-policy fine-tune target = +5 cm.** Plan the residual
+   RL: small MLP residual on top of frozen ACT, trained with PPO on
+   the +5 cm cell. Transfer-test on +3 cm and −5 cm to validate the
+   residual learned a "spatial correction" rather than overfitting
+   to +5 cm specifically.
+3. **Manual κ relabel** when 2026-05-24 unlock hits: load the redacted
+   samples, label by watching rollout videos, write
+   `data/taxonomy/manual_labels_{alr0r0p2,18xb5ob0}.json`, run
+   `cohens_kappa(auto, manual)` per cell, target κ > 0.6.
+4. **Optional**: visual / dynamic perturbation wrappers. PRD §6.4 lists
+   them but the two-axis comparison we already have makes the §6.4
+   point; adding axes adds polish, not insight. Defer to Week 8+.

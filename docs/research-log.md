@@ -630,3 +630,85 @@ If Phase 4 picks one cell, +5cm remains the cleanest target. If Phase 4 picks a 
 
 Same as STATE.md step 4 → temporal axis runs (3 cells, configs already in repo from earlier in the day). After temporal we have 2 axes × 3+ cells, enough material to draft the §6.4 multi-axis comparison.
 
+
+## Week 5 — 2026-05-17 (Day 3: temporal axis + cross-axis comparison)
+
+Ran the 3 temporal-delay cells (1 / 3 / 5 steps) on M1 alongside finishing the negative-spatial batch. Auto-classify produced labels inline; rendered the two temporal figures (`docs/figures/temporal_failure_distribution.png`, `docs/figures/temporal_degradation_curve.png`) using the same scripts with `--title` / `--xlabel` overrides.
+
+### Temporal axis results
+
+| delay | n | mean_tsr | σ | Success | Recovery | Approach | Oscillation | Needs review |
+|---|---|---|---|---|---|---|---|---|
+| nominal (cm6uf89g) | 150 | 0.800 | 0.057 | 120 (80.0%) | 0 (28 Timeout) | 0 | 0 | 2 (1.3%) |
+| 1 step (ejyfcv2k)  | 150 | 0.753 | 0.050 | 113 (75.3%) | 33 (22.0%) | 0 | 0 | 4 (2.7%) |
+| 3 steps (ad3z7eg0) | 150 | 0.767 | 0.068 | 115 (76.7%) | 32 (21.3%) | 0 | 0 | 3 (2.0%) |
+| 5 steps (aycdd8hi) | 150 | 0.687 | 0.066 | 103 (68.7%) | 45 (30.0%) | 0 | 0 | 2 (1.3%) |
+
+### Cross-axis comparison: same failure mode, different elasticity
+
+The central finding of Week 5 is that **ACT's failure mode is policy-architecture-specific, not perturbation-axis-specific**. Both perturbation types we've measured (spatial cube displacement, temporal action delay) produce dominantly Recovery failures with near-zero Oscillation, Approach, and Grasp. The mechanism is the same: the policy reaches a position consistent with its nominal expectations, recognises something is off, and stalls quietly rather than attempting active correction.
+
+What differs across axes is the **elasticity** of TSR with respect to perturbation magnitude:
+
+| axis cell | TSR | ΔTSR vs nominal | Recovery |
+|---|---|---|---|
+| spatial −5 cm    | 0.127 | **−0.673** | 80.7% |
+| spatial +5 cm    | 0.307 | **−0.493** | 59.3% |
+| temporal 5 steps | 0.687 | **−0.113** | 30.0% |
+| spatial −1 cm    | 0.827 | +0.027 | 17.3% |
+| temporal 1 step  | 0.753 | −0.047 | 22.0% |
+
+Temporal degrades **far less** than spatial at matched-intensity perturbations:
+
+- 5-step delay loses 11 pp of TSR; +5 cm loses 49 pp; −5 cm loses 67 pp.
+- 1-step delay roughly matches the worst of small spatial (+1 cm: −8 pp).
+
+### Why temporal is mild: action chunking
+
+ACT predicts actions in 100-step chunks via `action_horizon` and applies temporal-ensembling across overlapping chunks. A 5-step delay shifts the executed action stream by 5% of one chunk — the temporal-ensembling mostly absorbs it. The policy's plan for the next 100 steps is still "correct"; only the *timing* of executing those 100 actions slips. The cube state at step ``t`` is slightly different from what the policy planned for, but the geometric task structure (cube at (~0, 0.5), receptacle at (~−0.018, 0.506)) hasn't moved.
+
+By contrast, a 5 cm spatial shift moves the cube to a position the policy's learned trajectories don't pass through. There's no temporal-ensembling fix for "the cube is elsewhere"; the policy needs a different plan, which it doesn't have.
+
+### σ behaviour: temporal stays super-Bernoulli throughout
+
+| delay | σ | Bernoulli SE √(p(1−p)/N) | σ / SE ratio |
+|---|---|---|---|
+| 1 step  | 0.050 | 0.035 | 1.4× |
+| 3 steps | 0.068 | 0.035 | 1.9× |
+| 5 steps | 0.066 | 0.038 | 1.7× |
+
+Every temporal cell sits **above** the Bernoulli floor — seed-to-seed variance is real, not just sampling noise. Compare to spatial ±5 cm where σ collapsed to **below** the floor (deterministic failure). The temporal axis shows no competence collapse at any magnitude we tested.
+
+This matters for Phase 4: residual RL on the spatial axis has a clean correction signal because the failure is deterministic. On the temporal axis, the same residual would be trying to predict a variable failure pattern — much harder learning signal. **Spatial remains the right Phase-4 target**; temporal would need a fundamentally different residual architecture (e.g. learn to act 2 steps ahead, not learn a position correction).
+
+### Non-monotonicity in temporal at small delays
+
+1-step delay (0.753) is *slightly worse* than 3-step delay (0.767). Within noise (σ ≈ 0.06 each, difference is 0.014 ≈ 0.23 σ) but consistent with the spatial-axis observation that the TSR landscape has flat valleys near nominal. The 100-step action-chunk plus temporal ensembling makes the *exact* delay value less important than whether you're "in the chunk-absorbed regime" (small) or "drifting outside" (large). At 5 steps we're starting to drift outside.
+
+### Updated Phase 4 design implications
+
+After Day 2 the conclusion was **+5cm as the residual-RL base-policy target**. After Day 3 that holds but the reasoning is sharper:
+
+- Spatial-axis failures are **deterministic** (sub-Bernoulli σ) → residual RL learns a clean corrective pattern.
+- Temporal-axis failures are **variable** (super-Bernoulli σ) → residual RL would chase noise.
+- Within spatial, +5 cm has the cleanest failure mode (one bucket: Recovery; geometric structure).
+
+Plan: train residual MLP on +5 cm, evaluate it on +3 cm and −5 cm as **transfer tests**. If it transfers within spatial, that confirms the residual learned a "spatial correction" not just a "+5 cm correction". If it transfers across to temporal, that'd be surprising and informative.
+
+### Open / deferred (carried forward)
+
+- **Mechanism of the negative-y direction-flip in spatial asymmetry** (Day 2 entry).
+- **Cross-session `mean_tsr_custom` drift** still unresolved (mock-env determinism is green; real-env reconciliation outstanding).
+- **Manual κ relabel** — exporter run for +5 cm (`alr0r0p2`) and −5 cm (`18xb5ob0`); unlock May 24.
+
+### What needs to land in PRD §6.4
+
+We now have two-axis data with a coherent narrative. Outline:
+
+1. **Both perturbation types produce the same failure mode** (Recovery, by classifier rule). Implication: ACT's response to off-distribution input is policy-architectural.
+2. **Elasticity differs by 4-6× between axes.** Spatial is brittle; temporal is robust. Cite chunk-length and temporal-ensembling as the mechanism.
+3. **σ behaviour distinguishes the regimes**: deterministic failure (spatial ±5) vs variable failure (temporal anywhere).
+4. **Phase 4 residual target: +5 cm**, with explicit explanation of why temporal would need a different residual architecture.
+
+This is the section the report needs. Drafting it for the PRD belongs to a separate commit; this entry is the data and the narrative.
+
