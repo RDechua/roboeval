@@ -102,6 +102,7 @@ convention = "google"
 "roboeval/evaluation/calibration.py" = ["ANN401"]   # JSON values are heterogenous
 "roboeval/envs/perturb.py" = ["ANN401"]             # per-kind kwargs are heterogenous
 "roboeval/cli.py" = ["ANN401"]                      # OmegaConf cfg + env factory closures
+"scripts/**" = ["ANN401", "D103"]                   # wandb + table-row values untyped
 
 # ---------------------------------------------------------------------------
 # Mypy
