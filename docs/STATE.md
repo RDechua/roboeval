@@ -1,4 +1,4 @@
-# RoboEval — Current State (2026-05-17, Week 5 Day 1)
+# RoboEval — Current State (2026-05-17, Week 5 Day 2)
 
 A tight session-handoff anchor. `docs/PRD.md` is "what we're building",
 `docs/research-log.md` is "what happened week-by-week", this file is
@@ -9,8 +9,9 @@ welcome (it's a snapshot, not a journal).
 
 Phase 3 (robustness study) in progress. Gates G1 (foundation) and G2
 (baseline) closed. Week 5 trajectory-data extension + classifier wire-up
-complete; failure-mode distribution computed for the 3 spatial cells.
-Next: negative spatial shifts, then remaining perturbation axes.
+complete; **full spatial axis run (-5 → +5 cm, 7 cells)** with failure-
+mode distribution per cell. Temporal axis wrapper + 3 configs scaffolded
+but not yet run on M1.
 
 ## Headline numbers
 
@@ -25,21 +26,36 @@ Next: negative spatial shifts, then remaining perturbation axes.
   Frozen at `data/calibration/transfer_cube_target_xy.json`.
   `dwell_steps = 1` (gym-aloha terminates on `reward==4` same-step).
 
-## Spatial degradation curve + failure-mode distribution (Weeks 4-5)
+## Spatial degradation curve + failure-mode distribution (Weeks 4-5, 7 cells)
 
-| cell | mean_tsr | σ | Success | Recovery | Timeout | Needs review |
-|---|---|---|---|---|---|---|
-| nominal | 0.80 | 0.057 | 80.0% | 0%    | **18.7%** | 1.3% |
-| y+1cm   | 0.72 | 0.102 | 72.0% | **24.7%** | 0%    | 3.3% |
-| y+3cm   | 0.55 | 0.041 | 55.3% | **37.3%** | 0%    | 6.7% |
-| y+5cm   | 0.31 | 0.019 | 30.7% | **59.3%** | 0%    | 8.7% |
+| cell | mean_tsr | σ | Success | Recovery | Approach | Timeout | Needs review |
+|---|---|---|---|---|---|---|---|
+| **-5cm** | 0.127 | 0.009 | 12.7% | **80.7%** | 4.7% | 0 | 2.0% |
+| -3cm     | 0.553 | 0.025 | 55.3% | **42.0%** | 0    | 0 | 2.7% |
+| -1cm     | 0.827 | 0.034 | 82.7% | 17.3%     | 0    | 0 | 0    |
+| nominal  | 0.800 | 0.057 | 80.0% | 0%        | 0    | 18.7% | 1.3% |
+| +1cm     | 0.720 | 0.102 | 72.0% | 24.7%     | 0    | 0 | 3.3% |
+| +3cm     | 0.553 | 0.041 | 55.3% | 37.3%     | 0.7% | 0 | 6.7% |
+| **+5cm** | 0.307 | 0.019 | 30.7% | **59.3%** | 0.7% | 0 | 8.7% |
 
-Grasp/Approach/Oscillation are ≤ 1.3% across all cells. Figure at
-`docs/figures/spatial_failure_distribution.png`. Headline: **under any
-positive y-shift the failure mode flips from Timeout to Recovery**;
-policy ends within 5 cm of cube, never engages, stays quiet. ACT has no
-learned response to off-nominal cube placement. **+5cm is the strongest
-Phase 4 residual-RL target** (59% Recovery, deterministic, geometric).
+Figure at `docs/figures/spatial_failure_distribution.png` (7-cell stack).
+Headline findings (research-log Week 5 Day 2 for full analysis):
+
+1. **Asymmetric curve** — at ±1 cm, −1cm is +2.7 pp *better* than nominal
+   while +1cm is −8.0 pp *worse*. At ±3 cm both match. At ±5 cm the
+   asymmetry has flipped: −5cm (12.7%) is dramatically worse than +5cm
+   (30.7%).
+2. **Recovery dominates** failures across both directions.
+3. **Approach failures emerge at −5cm** (4.7% vs 0.7% at +5cm) — the
+   first per-cell qualitative shift in failure morphology.
+4. **σ collapse is more aggressive on the negative side** — sub-Bernoulli
+   from −1cm onward; positive side is super-Bernoulli at +1cm before
+   collapsing. Negative-y is deterministic; positive-y is variable at
+   small magnitude then collapses.
+
+Phase 4 base-policy target: **+5cm remains the cleanest** (single failure
+mode, 59% Recovery, deterministic). −5cm has more headroom but multi-modal
+failure (Recovery + Approach), harder residual-RL signal.
 
 ## Stack / repo state
 
@@ -92,8 +108,8 @@ docs/figures/spatial_failure_distribution.png   # §6.4 headline figure
 
 - **G1 Foundation** ✓ CI green, MPS verified, smoke runs
 - **G2 Baseline** ✓ 80% TSR within ±5 pp of model card 83%, σ=5.7% < 7%
-- **G3 Robustness & Taxonomy** ⏳ spatial 3/6 cells run; 3 negative cells
-  scaffolded; temporal wrapper + 3 cells scaffolded (not yet run);
+- **G3 Robustness & Taxonomy** ⏳ spatial 7/7 cells run (−5 → +5 cm
+  complete); temporal wrapper + 3 cells scaffolded (not yet run);
   visual/dynamic not started; all 6 classifier rules wired + auto-labels
   artifact produced per eval run
 - **G4 Residual RL** — not started (Weeks 6–7)
@@ -129,15 +145,21 @@ docs/figures/spatial_failure_distribution.png   # §6.4 headline figure
 
 ## Next session intent
 
-Week 5 Day 2 — close reproducibility + scale the perturbation suite:
+Week 5 Day 3 — temporal axis runs + multi-axis writeup prep:
 
-1. Write `tests/evaluation/test_rollout_aggregates_deterministic.py`:
-   assert bit-identical trajectory aggregates across two same-seed runs
-   on the mock env. Reproduces the cross-session drift in
-   `mean_tsr_custom` or rules out the new physics reads as cause.
-2. Add 3 negative spatial config cells (`act_spatial_y-{1,3,5}cm.yaml`)
-   + run them on M1 (~75 min). Same auto-classify path, no new code.
-3. Re-render `docs/figures/spatial_failure_distribution.png` to span
-   −5 → +5 cm. Updates §6.4 in research-log with directional findings.
-4. Pick the next perturbation axis: temporal (cheapest — action
-   downsampling/upsampling) or visual (needs render-pipeline hooks).
+1. Run the 3 temporal cells on M1 (~75 min):
+   `roboeval evaluate --config configs/perturbation/temporal/act_temporal_delay_{1,3,5}steps.yaml`.
+   Auto-classify writes labels per cell; no extra code needed.
+2. Render a temporal-axis figure (re-use `scripts/plot_failure_distribution.py`
+   with the 3 temporal cells + nominal). Likely a different stack
+   shape than spatial — action delay may produce more Oscillation /
+   Approach / mixed failures than Recovery, since the delayed-action
+   stream effectively asks the policy to operate on stale observations.
+3. Draft a 2-axis §6.4 paragraph comparing spatial (Recovery-dominant,
+   asymmetric) vs temporal (??). The contrast is the deliverable that
+   gives §6.4 a real cross-axis perspective rather than just
+   "spatial works".
+4. **Open question still**: cross-session `mean_tsr_custom` drift
+   (nominal: 0.680 → 0.727). Determinism regression on mock env passes;
+   real-env audit needs a same-session double-run on M1. Low priority
+   relative to the multi-axis writeup.
