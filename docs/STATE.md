@@ -61,7 +61,7 @@ failure (Recovery + Approach), harder residual-RL signal.
 
 - Python 3.11, `mypy --strict`, ruff, `lerobot==0.4.4`, MuJoCo+gym-aloha,
   Stable-Baselines3, Hydra (OmegaConf), W&B, matplotlib, Plotly+Dash.
-- **25 source files** in `roboeval/` + `scripts/`, **137 tests passing**.
+- **27 source files** in `roboeval/` + `scripts/`, **153 tests passing**.
 - CI: ruff + ruff-format + mypy + pytest on push/PR, CPU-only torch wheel.
 
 ## Module map
@@ -89,8 +89,10 @@ roboeval/
 └── residual/                  # empty — Weeks 6–7
 
 scripts/
-├── relabel_from_wandb.py        # post-hoc relabel a completed W&B run
-└── plot_failure_distribution.py # stacked-bar PNG generator for §6.4 figure
+├── relabel_from_wandb.py         # post-hoc relabel a completed W&B run
+├── plot_failure_distribution.py  # stacked-bar PNG (panel A of §6.4 figure)
+├── plot_degradation_curve.py     # TSR-vs-x + Bernoulli SE floor (panel B)
+└── export_relabel_sample.py      # PRD §7.3 step 4 redacted sample exporter
 
 configs/
 ├── baseline/act_nominal{,_fast,_mps_check}.yaml
@@ -101,7 +103,8 @@ data/
 ├── calibration/transfer_cube_target_xy.json    # frozen calibration artifact
 └── taxonomy/auto_labels_<run_id>.json          # frozen evidence trail (gitignored)
 
-docs/figures/spatial_failure_distribution.png   # §6.4 headline figure
+docs/figures/spatial_failure_distribution.png   # §6.4 panel A (stacked-bar)
+docs/figures/spatial_degradation_curve.png      # §6.4 panel B (TSR + SE floor)
 ```
 
 ## Quality gates (PRD §9.2)
