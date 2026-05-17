@@ -1,0 +1,16 @@
+# Spatial perturbation cell: cube initial y-position shifted -5 cm.
+# PRD §6.4 spatial axis, intensity 3 (negative direction, largest in
+# the suite). The left-arm receptacle is at +y ≈ 0.5 m so -5 cm moves
+# the cube *further* from the target — asymmetric semantics vs +5 cm,
+# where the cube starts closer to the receptacle. Expected: larger
+# degradation than +5 cm.
+extends: configs/baseline/act_nominal.yaml
+
+perturbation:
+  kind: spatial
+  dx_m: 0.0
+  dy_m: -0.05
+
+wandb:
+  name_prefix: act_spatial_y-5cm
+  tags: [week5, perturbation, spatial, act, y-5cm]
