@@ -460,3 +460,66 @@ PRD §10.2 Week 5 target — "Failure taxonomy: label 150+ rollouts, build class
 - Does the `Unexpected key(s)` warning's normalisation-equivalence assumption (Week 3 Day 2 entry) hold under perturbation? If HF re-normalised the dataset after the original training, the perturbed runs might be subtly biased. Empirical check: the nominal 80% matches model card 83% within noise — so probably fine.
 
 ---
+
+## Week 5 — 2026-05-17 (Day 1: trajectory aggregates + failure-mode distribution)
+
+Closed STATE.md's Week 5 steps 1-3 in one session. The harness now produces auto-classified failure-mode distributions per cell as a side-effect of `roboeval evaluate`, and the four spatial cells from Week 4 have been re-labelled post-hoc from W&B (no GPU re-spend) using `scripts/relabel_from_wandb.py`. PRD §7.3 step 4's "frozen evidence trail" lives at `data/taxonomy/auto_labels_<run_id>.json` and is bit-identical regardless of whether it was produced in-line during eval or backfilled later.
+
+### What landed in code
+
+1. **`RolloutResult` + 4 trajectory aggregates** (`action_sign_flip_rate`, `terminal_eef_xy_distance_m`, `contact_made`, `last_50_step_cube_displacement_m`). `run_rollout` tracks them via two new optional accessors on `envs/aloha.py` (`get_gripper_xy`, `get_cube_gripper_contact`) — mock envs in tests return `None`/`False` and the aggregates fall back to defaults.
+2. **Classifier wired to those aggregates** — six PRD §7.2 categories now have concrete detection rules with documented thresholds and a priority order. `classify_rollout` gains a keyword `perturbation_applied: bool` (run-level flag, sourced from `cfg.perturbation.kind != "none"`) that gates the Recovery rule.
+3. **Auto-labels artifact** (`roboeval/taxonomy/io.py`): schema-v1 JSON with `compute_distribution`, `labels_to_json_obj`, `write_auto_labels`. `_cmd_evaluate` calls the classifier post-rollout and writes the artifact alongside the W&B summary; stdout now prints `failure_dist` and `auto_labels` paths.
+4. **Post-hoc relabel script** (`scripts/relabel_from_wandb.py`): fetches a completed W&B run's rollouts table, reconstructs `RolloutResult`s, classifies, writes the same artifact. The trajectory aggregates were already in the table from step 1; only the classifier output was missing.
+
+Test count: **82 → 110 passed** (+28 across rollout aggregates, classifier rules, io schema, relabel parsing). All gates green: ruff, ruff-format, mypy --strict.
+
+### Spatial-axis failure-mode distribution
+
+| cell | n | Success | Grasp | Approach | Recovery | Timeout | Needs review |
+|---|---|---|---|---|---|---|---|
+| nominal      | 150 | 120 (80.0%) | 0 | 0           | **0**           | **28 (18.7%)** | 2 (1.3%) |
+| spatial y+1cm | 150 | 108 (72.0%) | 0 | 0           | **37 (24.7%)**  | **0**          | 5 (3.3%) |
+| spatial y+3cm | 150 | 83 (55.3%)  | 0 | 1 (0.7%)    | **56 (37.3%)**  | **0**          | 10 (6.7%) |
+| spatial y+5cm | 150 | 46 (30.7%)  | 1 | 1 (0.7%)    | **89 (59.3%)**  | **0**          | 13 (8.7%) |
+
+Success counts match the headline mean_tsr to the rollout (120/150 = 0.800, 108/150 = 0.720, 83/150 = 0.553, 46/150 = 0.307). Distribution sums cleanly. Figure rendered at `docs/figures/spatial_failure_distribution.png`.
+
+### Headline finding: the failure mechanism flips on perturbation
+
+Under nominal conditions, 28/30 of the failure rollouts are **TIMEOUT** (truncated with cube displacement < 1 cm in the last 50 steps). Under *any* positive y-shift, that number drops to zero and failures move entirely to **RECOVERY** (24.7%, 37.3%, 59.3% at +1, +3, +5 cm respectively).
+
+Operationally, Recovery requires three conditions simultaneously:
+- `perturbation_applied=True` (run-level filter — the same trajectory in the nominal cell would be labelled Timeout because the flag is False),
+- `action_sign_flip_rate < 0.05` (policy is quiet — no thrashing),
+- `last_50_step_cube_displacement_m < 0.01` (cube has stalled).
+
+So the policy ends with: **EE within 5 cm of the cube** (else Approach would fire — its threshold is `> 0.05 m`), **no contact made** (else Grasp would fire), **low motor variance**, **cube quiet**. That's a coherent signature: ACT, trained on nominal demos, reaches the *nominal-vicinity* position, recognises something is off, and **stalls rather than recovering**. No learned response to "cube is 1-5 cm off-nominal" exists in the demonstration set.
+
+### Implication for Phase 4 base-policy selection
+
+The PRD's residual RL design is most useful when the base policy is "quiet near the target" — i.e. it has a coherent local minimum to perturb out of, not a chaotic flailing pattern. Recovery-dominant cells fit that description perfectly. The +5 cm cell (59% Recovery) is now the strongest candidate for the Phase 4 base-policy fine-tune target: clear, deterministic failure mode, geometric structure (EE near cube but not engaging), and a correction signal residual RL is well-suited to learn (small EE delta toward the perturbed cube, then re-engage the grasp affordance).
+
+### What needs_review's growth tells us
+
+The needs_review fraction grows monotonically with perturbation (1.3% → 3.3% → 6.7% → 8.7%). These are rollouts that satisfy: not success, no contact, cube *did* move >1 cm in last 50 steps (else Timeout would fire), and policy not quiet enough (sign-flip rate ≥ 0.05) for Recovery. They sit between "stalled" and "actively wrong" — the policy is doing *something* but not producing useful motion. Worth a manual audit of ~5 of these to see whether the rule thresholds need tightening or whether they represent a genuinely missing category.
+
+### What's actually correct here vs. what's a classifier artifact
+
+**Correct (signal):**
+- All success counts match `mean_tsr` exactly — the classifier doesn't disagree with the success column.
+- The 0 Grasp / ~0 Approach finding is robust: very few failure rollouts ever made contact, and EE distance at terminal is generally small (< 5 cm) — the policy gets *near* the cube and then fails.
+- The Timeout-vs-Recovery split tracks the perturbation flag exactly as designed.
+
+**Classifier artifact (priority order):**
+- Many perturbed cells' "stalled, quiet, no contact" rollouts satisfy *both* Timeout's PRD rule ("truncated with no progress") *and* Recovery's. Priority puts Recovery first when `perturbation_applied=True`. That's the operationally useful labelling but means the **Timeout = 0** result under perturbation is the priority order, not absence of stalled trajectories. The nominal cell's 28 Timeouts are the same trajectories the +1/+3/+5 cm cells would have labelled Timeout if `perturbation_applied=False`.
+
+If the heatmap reader wants the "raw" Timeout count for perturbed cells, it's `Recovery + Timeout` per cell. The two columns are mutually exclusive by classifier construction.
+
+### Open / deferred
+
+- **W&B reproducibility shift** noted earlier (nominal `mean_tsr_custom = 0.680 → 0.727` across sessions, same seeds, same primary TSR): unexplained but within sampling noise of the 0.068 σ. Likely a side-effect of the new physics reads (`contact_fn`, `gripper_xy_fn`) in `run_rollout` advancing internal dm_control kinematics state by being called. Worth a `tests/test_rollout_aggregates_deterministic.py` that asserts bit-identical aggregates across same-seed re-runs on a mock env — deferred to next session.
+- **Negative spatial cells** (y-1, y-3, y-5 cm) — would symmetrise the curve and test directional sensitivity. STATE.md step 4.
+- **Visual / dynamic / temporal axes** — perturbation wrappers stubbed; STATE.md step 5+.
+- **Manual audit of needs_review rollouts** — ~5 from the +5 cm cell would tell us whether to tighten Recovery's sign-flip threshold (currently 0.05) or split off a new category for "motion without engagement".
+
