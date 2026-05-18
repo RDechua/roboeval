@@ -78,15 +78,15 @@ failure (Recovery + Approach), harder residual-RL signal.
 
 - Python 3.11, `mypy --strict`, ruff, `lerobot==0.4.4`, MuJoCo+gym-aloha,
   Stable-Baselines3, Hydra (OmegaConf), W&B, matplotlib, Plotly+Dash.
-- **31 source files** in `roboeval/` + `scripts/`, **183 tests passing**.
+- **32 source files** in `roboeval/` + `scripts/`, **193 tests passing**.
 - CI: ruff + ruff-format + mypy + pytest on push/PR, CPU-only torch wheel.
 
 ## Module map
 
 ```
 roboeval/
-├── cli.py                     # smoke, evaluate, calibrate. evaluate now
-│                               # auto-classifies + writes auto_labels JSON
+├── cli.py                     # smoke, evaluate, calibrate, residual {train,evaluate}.
+│                               # evaluate auto-classifies + writes auto_labels JSON
 ├── envs/aloha.py              # env factory + cube_state + gripper_xy + contact
 ├── envs/success.py            # geometric detector; no defaults, all fields required
 ├── envs/perturb.py            # Spatial + Temporal wrappers; visual/dynamic stubbed
@@ -105,6 +105,7 @@ roboeval/
 ├── taxonomy/io.py             # schema-v1 auto_labels_<run_id>.json writer
 └── residual/                  # Phase 4: residual RL primitives
     ├── policy.py              # ResidualMLP (2x256 GELU) + ResidualCompositor
+    ├── composite.py           # ResidualCompositePolicy (Policy adapter for eval)
     ├── reward.py              # sparse + shaped + combined reward functions
     ├── env_wrapper.py         # gym wrapper composing base + residual
     └── train.py               # SB3 PPO training loop
@@ -141,9 +142,13 @@ docs/figures/temporal_degradation_curve.png     # §6.4 temporal-axis panel B
   PRD §7.3 step 4 relabel-sample exporter live; +5cm and -5cm samples
   exported, unlock 2026-05-24.
 - **G4 Residual RL** ⏳ Phase 4 scaffold complete (`roboeval/residual/`:
-  ResidualMLP per PRD §8.2 spec, ResidualCompositor with learnable alpha,
-  env wrapper, SB3 PPO training entry point). Configs for Conditions B
-  (sparse) and C (shaped) at +5cm target. Training run not started yet.
+  ResidualMLP per PRD §8.2 spec, ResidualCompositor with alpha-init
+  parameter [fixed-per-run in v1; co-trainable α is a v1.1 design item],
+  env wrapper, SB3 PPO training entry point, ResidualCompositePolicy
+  for evaluation). CLI subcommands: `roboeval residual train --config`
+  and `roboeval residual evaluate --config --residual-path`. Configs
+  for Conditions B (sparse) and C (shaped) at +5cm target. Training
+  run not started yet.
 - **G5 Communication** — not started (Week 8)
 - **G6 Launch** — not started (Weeks 9–10)
 
@@ -178,25 +183,27 @@ docs/figures/temporal_degradation_curve.png     # §6.4 temporal-axis panel B
 
 Week 6 — kick off Phase 4 residual RL training:
 
-1. **Add `roboeval residual train --config` CLI subcommand** that
-   wraps `roboeval.residual.train.train_residual`. Loads the residual
-   config block (alpha_init, total_timesteps, learning_rate, etc.),
-   constructs the base policy via `load_policy`, builds the env
-   factory with the spatial perturbation, picks the reward function
-   from the config's `residual.reward.kind`, runs PPO, saves the
-   trained model to `outputs/residual/<run_name>/`. Goal: one command
-   per ablation condition.
-2. **ACT-encoder feature-extractor hook.** Currently `zero_feature_
+1. **ACT-encoder feature-extractor hook.** Currently `zero_feature_
    extractor` returns a 0-dim vector; residual conditions only on the
    base action. Wire up a hook into the ACT policy's encoder forward
-   so the residual sees the actual perceptual features. (Lerobot
-   internals; ~half-day of careful integration.)
-3. **Run Condition B (sparse) first** for the smallest seed (~1h on
-   M1 at 500k steps with action-chunked inference). Sanity-check
+   so the residual sees the actual perceptual features. Lerobot
+   internals; needs M1 access to validate against the real ACT
+   checkpoint.
+2. **Run Condition B (sparse) first** with one seed via
+   `roboeval residual train --config configs/residual/residual_ppo_y+5cm_sparse.yaml`
+   (~1h on M1 at 500k steps with action-chunked inference). Sanity-check
    training curves in W&B; if PPO is learning anything, run the
    remaining 2 seeds + the 3 Condition C seeds.
-4. **Manual κ relabel** when 2026-05-24 unlock hits — same plan as
-   before; samples are already exported (`alr0r0p2` and `18xb5ob0`).
-5. **Optional**: visual / dynamic perturbation axes. Deferred per
+3. **Evaluate trained residual** via
+   `roboeval residual evaluate --config <same> --residual-path
+   outputs/residual/y+5cm_sparse/ppo_residual.zip`. Produces the
+   same auto_labels JSON + W&B summary as the bare-base eval, so
+   the PRD §8.3 ablation table is a direct comparison.
+4. **Manual κ relabel** when 2026-05-24 unlock hits — samples are
+   already exported (`alr0r0p2` and `18xb5ob0`).
+5. **v1.1 design item**: make alpha co-trainable with PPO via a
+   custom SB3 policy class. Out of scope for v1 — for now sweep
+   `alpha_init` across runs (0.05, 0.1, 0.3) and pick the best.
+6. **Optional**: visual / dynamic perturbation axes. Deferred per
    Week 5 Day 3 conclusion — the spatial+temporal pair already
    supplies the cross-axis comparison; adding axes adds polish.

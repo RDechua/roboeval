@@ -103,6 +103,7 @@ convention = "google"
 "roboeval/envs/perturb.py" = ["ANN401"]             # per-kind kwargs are heterogenous
 "roboeval/cli.py" = ["ANN401"]                      # OmegaConf cfg + env factory closures
 "scripts/**" = ["ANN401", "D103"]                   # wandb + table-row values untyped
+"roboeval/residual/composite.py" = ["ANN401"]       # SB3 BaseAlgorithm.predict signature
 
 # ---------------------------------------------------------------------------
 # Mypy
