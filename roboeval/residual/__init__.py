@@ -13,6 +13,7 @@ Public surface:
 
 from __future__ import annotations
 
+from roboeval.residual.composite import ResidualCompositePolicy
 from roboeval.residual.env_wrapper import (
     FeatureExtractor,
     ResidualEnvWrapper,
@@ -29,6 +30,7 @@ from roboeval.residual.train import build_training_env, train_residual
 
 __all__ = [
     "FeatureExtractor",
+    "ResidualCompositePolicy",
     "ResidualCompositor",
     "ResidualEnvWrapper",
     "ResidualMLP",

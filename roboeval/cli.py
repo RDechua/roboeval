@@ -435,6 +435,296 @@ def _git_sha() -> str:
         return "unknown"
 
 
+def _build_reward_fn(cfg: Any, target_xy: tuple[float, float]) -> Any:
+    """Build a reward_fn closure from the residual config block.
+
+    Reads ``cfg.residual.reward.kind`` (``"sparse"`` or ``"shaped"``)
+    and ``cfg.residual.reward.shaping_weight``. Returns a callable
+    matching :class:`roboeval.residual.env_wrapper.RewardFn`.
+    """
+    from roboeval.residual.reward import combined_reward, sparse_success_reward
+
+    reward_cfg = cfg.residual.reward
+    kind = str(reward_cfg.kind)
+    if kind == "sparse":
+
+        def _reward_sparse(info: Any, _cube_xy: Any) -> float:
+            return sparse_success_reward(info)
+
+        return _reward_sparse
+    if kind == "shaped":
+        shaping_weight = float(reward_cfg.shaping_weight)
+
+        def _reward_shaped(info: Any, cube_xy: Any) -> float:
+            return combined_reward(
+                info,
+                cube_xy,
+                target_xy,
+                shaping_weight=shaping_weight,
+            )
+
+        return _reward_shaped
+    raise ValueError(
+        f"unknown residual.reward.kind {kind!r}; expected 'sparse' or 'shaped'."
+    )
+
+
+def _cmd_residual_train(config_path: str) -> int:
+    """Train a PPO residual against a perturbed env (PRD §8 Conditions B/C).
+
+    Loads the residual config (which extends an eval baseline + adds
+    ``residual:`` and ``perturbation:`` blocks), constructs the frozen
+    base policy, builds the env factory with the chosen perturbation,
+    constructs the reward function from the config, and runs SB3 PPO
+    via :func:`roboeval.residual.train.train_residual`.
+
+    Args:
+        config_path: Path to the YAML config (e.g.
+            ``configs/residual/residual_ppo_y+5cm_sparse.yaml``).
+
+    Returns:
+        ``0`` on success, ``1`` on missing dependency, ``2`` on policy
+        load failure, ``3`` on training failure.
+    """
+    try:
+        from roboeval.envs.aloha import make_aloha_env
+        from roboeval.envs.perturb import make_perturbed_env
+        from roboeval.evaluation.calibration import register_calibration_resolver
+        from roboeval.evaluation.config import load_eval_config
+        from roboeval.policies.factory import load_policy
+        from roboeval.residual.policy import ResidualCompositor
+        from roboeval.residual.train import train_residual
+    except ImportError as exc:
+        _LOG.error("Missing dependency: %s", exc)
+        _LOG.error("Run `uv pip install -e '.[dev]'` to install the stack.")
+        return 1
+
+    register_calibration_resolver()
+    cfg = load_eval_config(config_path)
+
+    try:
+        base_policy = load_policy(
+            kind=str(cfg.policy.kind),
+            repo_id=str(cfg.policy.repo_id),
+            task=str(cfg.env.task),
+            device=str(cfg.policy.device),
+        )
+    except Exception as exc:  # noqa: BLE001 - cli-level boundary
+        _LOG.exception("Failed to load base policy: %s", exc)
+        return 2
+
+    perturb_cfg = cfg.get("perturbation")
+    perturb_kind: str | None = None
+    perturb_params: dict[str, Any] = {}
+    if perturb_cfg is not None and str(perturb_cfg.get("kind", "none")) != "none":
+        perturb_kind = str(perturb_cfg.kind)
+        perturb_params = {k: v for k, v in dict(perturb_cfg).items() if k != "kind"}
+
+    def _env_factory() -> Any:
+        env = make_aloha_env(
+            task=str(cfg.env.task),
+            episode_length=int(cfg.env.episode_length),
+        )
+        if perturb_kind is not None:
+            return make_perturbed_env(env, kind=perturb_kind, **perturb_params)
+        return env
+
+    target_xy_list = list(cfg.success.target_xy)
+    target_xy = (float(target_xy_list[0]), float(target_xy_list[1]))
+    reward_fn = _build_reward_fn(cfg, target_xy)
+
+    compositor = ResidualCompositor(alpha_init=float(cfg.residual.alpha_init))
+    res_cfg = cfg.residual
+
+    try:
+        save_path = train_residual(
+            base_env_factory=_env_factory,
+            base_policy=base_policy,
+            compositor=compositor,
+            reward_fn=reward_fn,
+            output_dir=str(res_cfg.output_dir),
+            total_timesteps=int(res_cfg.total_timesteps),
+            learning_rate=float(res_cfg.learning_rate),
+            n_steps=int(res_cfg.n_steps),
+            batch_size=int(res_cfg.batch_size),
+            n_epochs=int(res_cfg.n_epochs),
+            gamma=float(res_cfg.gamma),
+            seed=int(res_cfg.seed),
+        )
+    except Exception as exc:  # noqa: BLE001 - cli-level boundary
+        _LOG.exception("Residual PPO training crashed: %s", exc)
+        return 3
+
+    print(f"\n[roboeval residual train] Done. Saved model to: {save_path}")
+    return 0
+
+
+def _cmd_residual_evaluate(config_path: str, residual_path: str) -> int:
+    """Evaluate a trained PPO residual via the standard evaluate_policy pipeline.
+
+    Reuses the eval CLI's machinery (env factory, success detector, W&B
+    logging, classifier post-processing) but substitutes
+    :class:`ResidualCompositePolicy` for the bare base policy. Produces
+    the same ``auto_labels_<run_id>.json`` artifact and W&B summary, so
+    Condition B / C TSR can be compared directly against Condition A.
+
+    Args:
+        config_path: YAML config (residual training config; this command
+            re-reads the perturbation + success blocks from it).
+        residual_path: Path to the SB3 PPO ``.zip`` saved by training.
+    """
+    try:
+        from stable_baselines3 import PPO
+
+        from roboeval.envs.aloha import ALOHA_TRANSFER_CUBE_ID, make_aloha_env
+        from roboeval.envs.perturb import make_perturbed_env
+        from roboeval.envs.success import (
+            SuccessCriterion,
+            TransferCubeSuccessDetector,
+        )
+        from roboeval.evaluation.calibration import register_calibration_resolver
+        from roboeval.evaluation.config import load_eval_config
+        from roboeval.evaluation.logger import wandb_run
+        from roboeval.evaluation.loop import evaluate_policy
+        from roboeval.policies.factory import load_policy
+        from roboeval.residual.composite import ResidualCompositePolicy
+        from roboeval.residual.policy import ResidualCompositor
+        from roboeval.taxonomy import (
+            classify_rollout,
+            compute_distribution,
+            write_auto_labels,
+        )
+    except ImportError as exc:
+        _LOG.error("Missing dependency: %s", exc)
+        _LOG.error("Run `uv pip install -e '.[dev]'` to install the stack.")
+        return 1
+
+    from datetime import datetime
+
+    register_calibration_resolver()
+    cfg = load_eval_config(config_path)
+    target_xy_list = list(cfg.success.target_xy)
+    criterion = SuccessCriterion(
+        z_threshold_m=float(cfg.success.z_threshold_m),
+        xy_tolerance_m=float(cfg.success.xy_tolerance_m),
+        dwell_steps=int(cfg.success.dwell_steps),
+        target_xy=(float(target_xy_list[0]), float(target_xy_list[1])),
+    )
+
+    try:
+        base_policy = load_policy(
+            kind=str(cfg.policy.kind),
+            repo_id=str(cfg.policy.repo_id),
+            task=str(cfg.env.task),
+            device=str(cfg.policy.device),
+        )
+    except Exception as exc:  # noqa: BLE001 - cli-level boundary
+        _LOG.exception("Failed to load base policy: %s", exc)
+        return 2
+
+    perturb_cfg = cfg.get("perturbation")
+    perturb_kind: str | None = None
+    perturb_params: dict[str, Any] = {}
+    if perturb_cfg is not None and str(perturb_cfg.get("kind", "none")) != "none":
+        perturb_kind = str(perturb_cfg.kind)
+        perturb_params = {k: v for k, v in dict(perturb_cfg).items() if k != "kind"}
+
+    def _env_factory() -> Any:
+        env = make_aloha_env(
+            task=str(cfg.env.task),
+            episode_length=int(cfg.env.episode_length),
+        )
+        if perturb_kind is not None:
+            return make_perturbed_env(env, kind=perturb_kind, **perturb_params)
+        return env
+
+    compositor = ResidualCompositor(alpha_init=float(cfg.residual.alpha_init))
+    residual_model = PPO.load(residual_path)
+    composite = ResidualCompositePolicy(
+        base_policy=base_policy,
+        residual_model=residual_model,
+        compositor=compositor,
+    )
+
+    reward_kind = str(cfg.residual.reward.kind)
+    run_name = (
+        f"{cfg.wandb.name_prefix}_eval_" f"{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    )
+    config_dict = {
+        "policy_kind": "residual_act",
+        "policy_id": composite.policy_id,
+        "env_id": ALOHA_TRANSFER_CUBE_ID,
+        "device": composite.device,
+        "n_rollouts_per_seed": int(cfg.eval.n_rollouts_per_seed),
+        "seeds": list(cfg.eval.seeds),
+        "max_steps": int(cfg.eval.max_steps),
+        "perturbation_kind": perturb_kind or "none",
+        "perturbation_params": perturb_params,
+        "residual_path": residual_path,
+        "residual_reward_kind": reward_kind,
+        "residual_alpha_init": float(cfg.residual.alpha_init),
+        "lerobot_version": "0.4.4",
+    }
+
+    try:
+        with wandb_run(
+            project=str(cfg.wandb.project),
+            name=run_name,
+            config=config_dict,
+            tags=[*list(cfg.wandb.tags), "evaluate"],
+            mode=str(cfg.wandb.mode),
+        ) as handle:
+            result = evaluate_policy(
+                env_factory=_env_factory,
+                policy=composite,
+                detector_factory=lambda: TransferCubeSuccessDetector(criterion),
+                seeds=list(cfg.eval.seeds),
+                n_rollouts_per_seed=int(cfg.eval.n_rollouts_per_seed),
+                max_steps=int(cfg.eval.max_steps),
+                policy_id=composite.policy_id,
+                env_id=ALOHA_TRANSFER_CUBE_ID,
+                on_rollout=handle.log_rollout,
+            )
+            handle.log_summary(result)
+            perturbation_applied = perturb_kind is not None
+            labels = [
+                classify_rollout(r, perturbation_applied=perturbation_applied)
+                for r in result.rollouts
+            ]
+            distribution = compute_distribution(labels)
+            run_id = str(handle.run_id) if handle.run_id is not None else run_name
+            labels_path = write_auto_labels(
+                labels,
+                output_dir="data/taxonomy",
+                run_id=run_id,
+                config_path=str(config_path),
+                policy_id=composite.policy_id,
+                env_id=ALOHA_TRANSFER_CUBE_ID,
+                perturbation_kind=perturb_kind or "none",
+                perturbation_params=perturb_params,
+                perturbation_applied=perturbation_applied,
+            )
+            handle.log_distribution(distribution)
+
+            summary = (
+                f"\n[roboeval residual evaluate] Done.\n"
+                f"  mean_tsr        = {result.mean_tsr:.3f} +/- {result.std_tsr:.3f}\n"
+                f"  mean_tsr_custom = "
+                f"{result.mean_tsr_custom:.3f} +/- {result.std_tsr_custom:.3f}\n"
+                f"  per_seed_tsr    = {result.per_seed_tsr}\n"
+                f"  failure_dist    = {distribution}\n"
+                f"  auto_labels     = {labels_path}\n"
+            )
+            print(summary)
+            if handle.url:
+                print(f"  wandb_run_url   = {handle.url}")
+    except Exception as exc:  # noqa: BLE001 - cli-level boundary
+        _LOG.exception("Residual evaluation crashed: %s", exc)
+        return 3
+
+    return 0
+
+
 def _build_parser() -> argparse.ArgumentParser:
     """Build the top-level argument parser.
 
@@ -499,6 +789,41 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    residual = subparsers.add_parser(
+        "residual",
+        help="Phase 4 residual RL: train and evaluate PPO residuals.",
+    )
+    residual_sub = residual.add_subparsers(dest="residual_cmd", required=True)
+    residual_train = residual_sub.add_parser(
+        "train",
+        help="Train a PPO residual on top of a frozen base policy.",
+    )
+    residual_train.add_argument(
+        "--config",
+        required=True,
+        help=(
+            "Residual training config "
+            "(e.g. configs/residual/residual_ppo_y+5cm_sparse.yaml)."
+        ),
+    )
+    residual_eval = residual_sub.add_parser(
+        "evaluate",
+        help="Evaluate a trained residual via standard evaluate_policy pipeline.",
+    )
+    residual_eval.add_argument(
+        "--config",
+        required=True,
+        help="Same config used to train (residual + perturbation + success).",
+    )
+    residual_eval.add_argument(
+        "--residual-path",
+        required=True,
+        help=(
+            "Path to the saved PPO model "
+            "(the .zip file written by stable_baselines3)."
+        ),
+    )
+
     return parser
 
 
@@ -526,5 +851,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             output_path=str(args.output),
             n_rollouts=int(args.n_rollouts),
         )
+    if args.command == "residual":
+        if args.residual_cmd == "train":
+            return _cmd_residual_train(config_path=str(args.config))
+        if args.residual_cmd == "evaluate":
+            return _cmd_residual_evaluate(
+                config_path=str(args.config),
+                residual_path=str(args.residual_path),
+            )
+        raise AssertionError(f"unhandled residual_cmd: {args.residual_cmd!r}")
     # Unreachable: subparsers(required=True) enforces a known command.
     raise AssertionError(f"unhandled command: {args.command!r}")

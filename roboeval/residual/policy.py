@@ -120,6 +120,22 @@ class ResidualCompositor(nn.Module):
     The sigmoid clipping ensures alpha < 1, so the residual can never
     fully replace the base — a structural guarantee that the residual
     is a *correction*, not a substitute policy.
+
+    alpha-trainability in v1
+    ------------------------
+    ``alpha_logit`` is an ``nn.Parameter`` so it integrates with any
+    optimiser that walks ``compositor.parameters()``. However, the
+    SB3 PPO training loop in :mod:`roboeval.residual.train` only
+    optimises the parameters that live **inside** SB3's policy
+    network — the compositor lives in the env wrapper, outside that
+    boundary, so PPO doesn't see ``alpha_logit`` in its update.
+
+    For v1.0 this means **alpha is fixed at its initialisation per
+    training run**. The intended usage is to sweep ``alpha_init``
+    across runs (e.g. 0.05, 0.1, 0.3) and report the best. Making
+    alpha jointly trainable with PPO requires a custom SB3 policy
+    class that owns the compositor and exposes alpha as part of its
+    parameter list; this is a v1.1 design item flagged in STATE.md.
     """
 
     def __init__(
