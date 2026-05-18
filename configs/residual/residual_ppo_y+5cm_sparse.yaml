@@ -1,0 +1,34 @@
+# Residual PPO training, Condition B (sparse reward).
+# Trains an MLP residual on top of a frozen ACT base policy, evaluated
+# against the +5 cm spatial perturbation cell (the Phase 4 target chosen
+# in PRD §6.4.2 based on the deterministic Recovery-failure signature).
+#
+# Reward: sparse success (+1 on is_success, 0 otherwise). No shaping.
+#
+# Wall-time on M1 MPS: TBD. 500k env-steps at ~25 ms/step = ~3.5 h.
+# Total ablation suite (3 conditions x 3 seeds): ~30 h.
+
+extends: configs/baseline/act_nominal.yaml
+
+perturbation:
+  kind: spatial
+  dx_m: 0.0
+  dy_m: 0.05
+
+residual:
+  reward:
+    kind: sparse
+    shaping_weight: 0.0
+  alpha_init: 0.1
+  total_timesteps: 500000
+  learning_rate: 3.0e-4
+  n_steps: 2048
+  batch_size: 64
+  n_epochs: 10
+  gamma: 0.99
+  seed: 0
+  output_dir: outputs/residual/y+5cm_sparse
+
+wandb:
+  name_prefix: residual_ppo_y+5cm_sparse
+  tags: [week6, residual, ppo, condition_b, sparse, y+5cm]

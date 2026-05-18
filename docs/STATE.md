@@ -78,7 +78,7 @@ failure (Recovery + Approach), harder residual-RL signal.
 
 - Python 3.11, `mypy --strict`, ruff, `lerobot==0.4.4`, MuJoCo+gym-aloha,
   Stable-Baselines3, Hydra (OmegaConf), W&B, matplotlib, Plotly+Dash.
-- **27 source files** in `roboeval/` + `scripts/`, **153 tests passing**.
+- **31 source files** in `roboeval/` + `scripts/`, **183 tests passing**.
 - CI: ruff + ruff-format + mypy + pytest on push/PR, CPU-only torch wheel.
 
 ## Module map
@@ -103,7 +103,11 @@ roboeval/
 ├── taxonomy/classifier.py     # All 6 PRD §7.2 rules + priority + perturbation_applied
 ├── taxonomy/agreement.py      # Cohen's κ for §7.3 blinded relabel
 ├── taxonomy/io.py             # schema-v1 auto_labels_<run_id>.json writer
-└── residual/                  # empty — Weeks 6–7
+└── residual/                  # Phase 4: residual RL primitives
+    ├── policy.py              # ResidualMLP (2x256 GELU) + ResidualCompositor
+    ├── reward.py              # sparse + shaped + combined reward functions
+    ├── env_wrapper.py         # gym wrapper composing base + residual
+    └── train.py               # SB3 PPO training loop
 
 scripts/
 ├── relabel_from_wandb.py         # post-hoc relabel a completed W&B run
@@ -114,7 +118,8 @@ scripts/
 configs/
 ├── baseline/act_nominal{,_fast,_mps_check}.yaml
 ├── perturbation/spatial/act_spatial_y{+,-}{1,3,5}cm.yaml  # 6 cells, -5 to +5 cm
-└── perturbation/temporal/act_temporal_delay_{1,3,5}steps.yaml  # 3 cells
+├── perturbation/temporal/act_temporal_delay_{1,3,5}steps.yaml  # 3 cells
+└── residual/residual_ppo_y+5cm_{sparse,shaped}.yaml  # Phase 4 Conditions B,C
 
 data/
 ├── calibration/transfer_cube_target_xy.json    # frozen calibration artifact
@@ -135,7 +140,10 @@ docs/figures/temporal_degradation_curve.png     # §6.4 temporal-axis panel B
   classifier rules wired + auto-labels artifact produced per eval run.
   PRD §7.3 step 4 relabel-sample exporter live; +5cm and -5cm samples
   exported, unlock 2026-05-24.
-- **G4 Residual RL** — not started (Weeks 6–7)
+- **G4 Residual RL** ⏳ Phase 4 scaffold complete (`roboeval/residual/`:
+  ResidualMLP per PRD §8.2 spec, ResidualCompositor with learnable alpha,
+  env wrapper, SB3 PPO training entry point). Configs for Conditions B
+  (sparse) and C (shaped) at +5cm target. Training run not started yet.
 - **G5 Communication** — not started (Week 8)
 - **G6 Launch** — not started (Weeks 9–10)
 
@@ -168,21 +176,27 @@ docs/figures/temporal_degradation_curve.png     # §6.4 temporal-axis panel B
 
 ## Next session intent
 
-Week 5 → Week 6 transition. Phase 3 robustness data is sufficient for
-the PRD §6.4 writeup; Phase 4 residual RL can begin.
+Week 6 — kick off Phase 4 residual RL training:
 
-1. **Draft PRD §6.4 prose** from the Week 5 Day 3 research-log entry's
-   four-point outline. Two-axis findings: same failure mode, different
-   elasticity, σ-collapse-vs-super-Bernoulli distinguishes the regimes.
-2. **Phase 4 base-policy fine-tune target = +5 cm.** Plan the residual
-   RL: small MLP residual on top of frozen ACT, trained with PPO on
-   the +5 cm cell. Transfer-test on +3 cm and −5 cm to validate the
-   residual learned a "spatial correction" rather than overfitting
-   to +5 cm specifically.
-3. **Manual κ relabel** when 2026-05-24 unlock hits: load the redacted
-   samples, label by watching rollout videos, write
-   `data/taxonomy/manual_labels_{alr0r0p2,18xb5ob0}.json`, run
-   `cohens_kappa(auto, manual)` per cell, target κ > 0.6.
-4. **Optional**: visual / dynamic perturbation wrappers. PRD §6.4 lists
-   them but the two-axis comparison we already have makes the §6.4
-   point; adding axes adds polish, not insight. Defer to Week 8+.
+1. **Add `roboeval residual train --config` CLI subcommand** that
+   wraps `roboeval.residual.train.train_residual`. Loads the residual
+   config block (alpha_init, total_timesteps, learning_rate, etc.),
+   constructs the base policy via `load_policy`, builds the env
+   factory with the spatial perturbation, picks the reward function
+   from the config's `residual.reward.kind`, runs PPO, saves the
+   trained model to `outputs/residual/<run_name>/`. Goal: one command
+   per ablation condition.
+2. **ACT-encoder feature-extractor hook.** Currently `zero_feature_
+   extractor` returns a 0-dim vector; residual conditions only on the
+   base action. Wire up a hook into the ACT policy's encoder forward
+   so the residual sees the actual perceptual features. (Lerobot
+   internals; ~half-day of careful integration.)
+3. **Run Condition B (sparse) first** for the smallest seed (~1h on
+   M1 at 500k steps with action-chunked inference). Sanity-check
+   training curves in W&B; if PPO is learning anything, run the
+   remaining 2 seeds + the 3 Condition C seeds.
+4. **Manual κ relabel** when 2026-05-24 unlock hits — same plan as
+   before; samples are already exported (`alr0r0p2` and `18xb5ob0`).
+5. **Optional**: visual / dynamic perturbation axes. Deferred per
+   Week 5 Day 3 conclusion — the spatial+temporal pair already
+   supplies the cross-axis comparison; adding axes adds polish.
