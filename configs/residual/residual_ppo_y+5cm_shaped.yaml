@@ -1,0 +1,35 @@
+# Residual PPO training, Condition C (shaped reward).
+# Same base + perturbation as Condition B; reward augments sparse
+# success with a negative-L2-distance term ``-shaping_weight × ||cube_xy
+# - target_xy||``. The shaping should give PPO a denser learning
+# signal for the +5 cm cell's "policy stalls quietly near target"
+# Recovery failures.
+#
+# shaping_weight 0.01 is a reasonable starting point: at the calibrated
+# 2.2 cm xy tolerance, the distance penalty is ~-0.0002 per step, well
+# below the +1 sparse bonus. Subject to ablation tuning.
+
+extends: configs/baseline/act_nominal.yaml
+
+perturbation:
+  kind: spatial
+  dx_m: 0.0
+  dy_m: 0.05
+
+residual:
+  reward:
+    kind: shaped
+    shaping_weight: 0.01
+  alpha_init: 0.1
+  total_timesteps: 500000
+  learning_rate: 3.0e-4
+  n_steps: 2048
+  batch_size: 64
+  n_epochs: 10
+  gamma: 0.99
+  seed: 0
+  output_dir: outputs/residual/y+5cm_shaped
+
+wandb:
+  name_prefix: residual_ppo_y+5cm_shaped
+  tags: [week6, residual, ppo, condition_c, shaped, y+5cm]
