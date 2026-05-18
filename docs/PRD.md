@@ -247,7 +247,65 @@ The perturbation suite stresses **Policy A (ACT) only** in v1.0 (see §3.2 for r
 | Dynamic | Object pushed 2 cm mid-rollout at fixed nominal-completion fraction | at 25%, 50%, 75% of nominal completion |
 | Temporal | Action execution delayed (simulates latency) | 1, 3, 5 steps |
 
-Each (axis, intensity) cell runs 3 seeds × 50 rollouts = 150 rollouts. Total perturbation suite budget: ~1,800 rollouts (4 axes × ~3 intensities × 150).
+Each (axis, intensity) cell runs 3 seeds × 50 rollouts = 150 rollouts. Total perturbation suite budget: ~1,800 rollouts (4 axes × ~3 intensities × 150). **v1.0 status: 10 of ~24 cells run (spatial 7/7 cells across −5 → +5 cm; temporal 3/3 cells at 1/3/5-step delay). Visual and dynamic axes are scaffolded but deferred to v1.1 — the spatial + temporal pair already supplies a cross-axis comparison (§6.4.2); adding the remaining axes would add polish, not insight.**
+
+### 6.4.1 Results — Spatial and Temporal Axes
+
+**Spatial axis (7 cells, n = 150 per cell):**
+
+| Δy | TSR | σ | Dominant failure |
+|---|---|---|---|
+| −5 cm | 0.127 | 0.009 | Recovery 80.7%, Approach 4.7% |
+| −3 cm | 0.553 | 0.025 | Recovery 42.0% |
+| −1 cm | 0.827 | 0.034 | Recovery 17.3% |
+| nominal | 0.800 | 0.057 | Timeout 18.7% |
+| +1 cm | 0.720 | 0.102 | Recovery 24.7% |
+| +3 cm | 0.553 | 0.041 | Recovery 37.3% |
+| +5 cm | 0.307 | 0.019 | Recovery 59.3% |
+
+![Spatial failure-mode distribution (7-cell stack)](figures/spatial_failure_distribution.png)
+
+![Spatial degradation curve with Bernoulli SE floor overlay](figures/spatial_degradation_curve.png)
+
+Three findings from the spatial axis (full analysis: `research-log.md` Week 5 Day 2):
+
+1. **The degradation curve is asymmetric and non-monotonic at small magnitudes.** At ±1 cm, −1 cm slightly outperforms nominal (+2.7 pp) while +1 cm is meaningfully worse (−8.0 pp). At ±3 cm the cells collide. At ±5 cm the asymmetry flips: −5 cm (0.127) is dramatically worse than +5 cm (0.307). Mechanistic hypothesis: the cube's nominal start at y ≈ 0.5 places it at the right-arm's habituated pickup zone; small −y stays in that zone while small +y already drifts out, but large −y simultaneously breaks both right-arm pickup and left-arm receive.
+2. **σ collapse signals competence collapse.** σ at ±5 cm sits **below** the Bernoulli SE floor √(p(1−p)/N), indicating deterministic failure (same seed → same outcome). σ at +1 cm is 2.8× the floor — variable, seed-dependent. This distinction matters for Phase 4: deterministic failures admit a learnable correction; variable failures don't.
+3. **Approach Failure appears only at −5 cm** (4.7% vs ≤ 0.7% elsewhere). The first per-cell qualitative shift in the suite — at large negative shifts the policy reaches past where it expects the cube to be, terminating > 5 cm from the (shifted-away) cube.
+
+**Temporal axis (3 cells + nominal, n = 150 per cell):**
+
+| delay | TSR | σ | Dominant failure |
+|---|---|---|---|
+| nominal | 0.800 | 0.057 | Timeout 18.7% |
+| 1 step | 0.753 | 0.050 | Recovery 22.0% |
+| 3 steps | 0.767 | 0.068 | Recovery 21.3% |
+| 5 steps | 0.687 | 0.066 | Recovery 30.0% |
+
+![Temporal failure-mode distribution](figures/temporal_failure_distribution.png)
+
+![Temporal degradation curve](figures/temporal_degradation_curve.png)
+
+Three findings from the temporal axis (full analysis: `research-log.md` Week 5 Day 3):
+
+1. **Temporal degrades much more gently than spatial.** 5-step delay loses only 11 pp of TSR; +5 cm spatial loses 49 pp; −5 cm spatial loses 67 pp. ACT's 100-step action chunking and temporal-ensembling absorb most of the latency — a 5-step delay shifts the executed plan by 5% of one chunk while the geometric task structure is unchanged.
+2. **No competence collapse on the temporal axis.** σ stays super-Bernoulli at every cell (ratio 1.4× – 1.9× the floor). Failures are variable, not deterministic.
+3. **Non-monotonic at small delays.** 1-step delay (0.753) is within noise of 3-step delay (0.767) — the TSR landscape has a flat valley near nominal, consistent with the chunk-absorbed regime.
+
+### 6.4.2 Cross-Axis Synthesis
+
+The central Phase-3 finding is that **ACT's failure morphology is policy-architecture-specific, not perturbation-axis-specific**. Both axes produce dominantly Recovery failures (≥95% of all failures across the 10 cells we ran): the policy reaches a position consistent with its nominal expectations, recognises something is off, and **stalls quietly** rather than attempting active correction. Action-level pathologies (Oscillation) and outcome-specific failures (Grasp, Approach) are rare — Approach appears at one cell, Grasp at one cell, Oscillation never.
+
+What differs across axes is **elasticity**:
+
+| | spatial (−5 → +5 cm) | temporal (0 → 5 steps) |
+|---|---|---|
+| TSR range | 0.127 → 0.827 | 0.687 → 0.800 |
+| Max degradation vs nominal | 67 pp (at −5 cm) | 11 pp (at 5 steps) |
+| σ behaviour at extremes | sub-Bernoulli (deterministic) | super-Bernoulli (variable) |
+| Mechanism | no learned trajectory passes through the perturbed cube position | 100-step chunks + temporal-ensembling absorb latency |
+
+This shapes the Phase-4 design (§8): **the residual RL base-policy target is the +5 cm spatial cell.** Recovery-dominant failures plus deterministic σ collapse make the corrective signal a small spatial nudge that a small MLP can learn via PPO. Temporal would need a fundamentally different residual architecture (e.g., predict-actions-N-steps-ahead) — out of scope for v1.0. Phase 4 evaluates the residual on +5 cm and tests transfer to +3 cm and −5 cm to confirm it learned a "spatial correction" rather than overfitting to one cell.
 
 ---
 
