@@ -177,6 +177,11 @@ def test_evaluate_subcommand_completes_with_mocks(
     assert "Evaluation complete" in captured.out
     assert "n_rollouts      = 2" in captured.out
     assert "mean_tsr" in captured.out
+    # Persisted eval_results JSON should exist alongside the mocked W&B run.
+    assert "eval_results    =" in captured.out
+    assert (tmp_path / "outputs" / "eval" / "cli_regression").exists() or any(
+        Path("outputs/eval/cli_regression").glob("eval_results_*.json")
+    )
 
 
 def test_mock_adapter_satisfies_policy_protocol() -> None:
@@ -185,3 +190,68 @@ def test_mock_adapter_satisfies_policy_protocol() -> None:
 
     adapter = _MockAdapter()
     assert isinstance(adapter, Policy)
+
+
+def test_residual_aggregate_subcommand(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """`roboeval residual aggregate` reads JSON inputs, prints + persists report."""
+    import json
+
+    from roboeval.cli import main
+
+    def _payload(condition: str, seed: int, mean_tsr_custom: float) -> dict[str, Any]:
+        base: dict[str, Any] = {
+            "schema_version": 1,
+            "run_id": f"{condition.lower()}_seed{seed}",
+            "perturbation_kind": "spatial",
+            "perturbation_params": {"dx_m": 0.0, "dy_m": 0.05},
+            "metrics": {
+                "mean_tsr_custom": mean_tsr_custom,
+                "n_rollouts": 150,
+                "n_seed_groups": 3,
+            },
+        }
+        if condition == "A":
+            base["policy_kind"] = "act"
+        else:
+            base["policy_kind"] = "residual_act"
+            base["residual"] = {
+                "reward_kind": "sparse" if condition == "B" else "shaped",
+                "alpha_init": 0.05,
+                "log_std_init": -2.0,
+            }
+        return base
+
+    inputs: list[str] = []
+    for cond, means in (
+        ("A", [0.30, 0.32, 0.34]),
+        ("B", [0.55, 0.60, 0.50]),
+        ("C", [0.65, 0.70, 0.60]),
+    ):
+        for i, m in enumerate(means):
+            p = tmp_path / f"eval_results_{cond.lower()}_{i}.json"
+            p.write_text(json.dumps(_payload(cond, i, m)))
+            inputs.append(str(p))
+
+    out_json = tmp_path / "report.json"
+    exit_code = main(["residual", "aggregate", *inputs, "--output", str(out_json)])
+    assert exit_code == 0
+    captured = capsys.readouterr()
+    assert "Phase 4 Ablation" in captured.out
+    assert "Delta TSR vs Condition A" in captured.out
+    assert "Frozen base only" in captured.out
+    assert out_json.exists()
+    payload = json.loads(out_json.read_text())
+    assert payload["schema_version"] == 1
+    assert len(payload["conditions"]) == 3
+    assert len(payload["comparisons"]) == 2
+
+
+def test_residual_aggregate_missing_file_errors(tmp_path: Path) -> None:
+    """Aggregator exits non-zero (1) when a passed path doesn't exist."""
+    from roboeval.cli import main
+
+    exit_code = main(["residual", "aggregate", str(tmp_path / "does_not_exist.json")])
+    assert exit_code == 1

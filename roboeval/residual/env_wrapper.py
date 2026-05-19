@@ -76,6 +76,46 @@ def zero_feature_extractor(_obs: Mapping[str, Any]) -> npt.NDArray[np.float32]:
     return np.zeros(0, dtype=np.float32)
 
 
+def build_flat_obs(
+    obs_dict: Mapping[str, Any],
+    base_action: npt.NDArray[np.float32],
+    env: gym.Env[Any, Any],
+    *,
+    feature_extractor: FeatureExtractor = zero_feature_extractor,
+    cube_state_fn: CubeStateFn = get_cube_state,
+) -> npt.NDArray[np.float32]:
+    """Concatenate (agent_pos, cube_state, base_action, features) -> flat Box obs.
+
+    Top-level so :class:`ResidualEnvWrapper` (train-time) and
+    :class:`roboeval.residual.composite.ResidualCompositePolicy`
+    (eval-time) build the **bit-identical** flat observation. PPO
+    trained on this shape; eval must reproduce it exactly or SB3's
+    obs_to_tensor will reject the dict input.
+
+    Args:
+        obs_dict: gym-aloha observation dict (provides ``agent_pos``).
+        base_action: The base policy's action for the current step; the
+            wrapper caches it via :class:`ResidualEnvWrapper`, the
+            composite policy computes it inline before this call.
+        env: Underlying gym env; ``cube_state_fn`` reads cube qpos from
+            its dm_control physics.
+        feature_extractor: Same callable used at train time. Must be
+            kept consistent train/eval or the flat-obs widths diverge.
+        cube_state_fn: Accessor for the cube's qpos slice.
+
+    Returns:
+        ``np.float32`` array of shape ``(agent_pos_dim + 7 + action_dim
+        + feature_dim,)``.
+    """
+    agent_pos = np.asarray(obs_dict["agent_pos"], dtype=np.float32).flatten()
+    cube_state = np.asarray(cube_state_fn(env), dtype=np.float32).flatten()
+    features = np.asarray(feature_extractor(obs_dict), dtype=np.float32)
+    return np.concatenate(
+        [agent_pos, cube_state, base_action.astype(np.float32), features],
+        dtype=np.float32,
+    )
+
+
 class ResidualEnvWrapper(gym.Wrapper[Any, Any, Any, Any]):
     """Wrap an ALOHA env so PPO sees residual actions on top of a frozen base.
 
@@ -164,15 +204,18 @@ class ResidualEnvWrapper(gym.Wrapper[Any, Any, Any, Any]):
         obs_dict: Mapping[str, Any],
         base_action: npt.NDArray[np.float32],
     ) -> npt.NDArray[np.float32]:
-        """Concatenate (agent_pos, cube_state, base_action, features) into a Box obs."""
-        agent_pos = np.asarray(obs_dict["agent_pos"], dtype=np.float32).flatten()
-        cube_state = np.asarray(
-            self._cube_state_fn(self.env), dtype=np.float32
-        ).flatten()
-        features = np.asarray(self._feature_extractor(obs_dict), dtype=np.float32)
-        return np.concatenate(
-            [agent_pos, cube_state, base_action.astype(np.float32), features],
-            dtype=np.float32,
+        """Concatenate (agent_pos, cube_state, base_action, features) into a Box obs.
+
+        Delegates to :func:`build_flat_obs` so the train-time wrapper and
+        the eval-time :class:`ResidualCompositePolicy` produce bit-identical
+        observations for PPO.
+        """
+        return build_flat_obs(
+            obs_dict,
+            base_action,
+            self.env,
+            feature_extractor=self._feature_extractor,
+            cube_state_fn=self._cube_state_fn,
         )
 
     def reset(
@@ -225,5 +268,6 @@ __all__ = [
     "FeatureExtractor",
     "ResidualEnvWrapper",
     "RewardFn",
+    "build_flat_obs",
     "zero_feature_extractor",
 ]
