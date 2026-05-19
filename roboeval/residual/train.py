@@ -95,6 +95,7 @@ def train_residual(
     gamma: float = 0.99,
     seed: int = 0,
     verbose: int = 1,
+    log_std_init: float = 0.0,
     feature_extractor: FeatureExtractor = zero_feature_extractor,
 ) -> Path:
     """Run SB3 PPO against a residual-wrapped env; save the trained model.
@@ -115,6 +116,12 @@ def train_residual(
         gamma: Discount factor.
         seed: SB3 PPO RNG seed.
         verbose: SB3 verbose level.
+        log_std_init: Initial log-std of PPO's Gaussian policy. SB3's
+            default ``0.0`` (std=1.0) combined with our compositor's
+            ``alpha=0.1`` perturbs the base by up to ±0.2 per dim,
+            which destroys ACT's narrow successful trajectory on the
+            +5cm cell. ``-2.0`` (std≈0.14) keeps the initial residual
+            small enough to preserve the base TSR while PPO bootstraps.
         feature_extractor: Obs feature extractor for the residual MLP
             input. Default is the zero-width extractor; production use
             substitutes an ACT-encoder hook (Week 7).
@@ -135,15 +142,17 @@ def train_residual(
     out_dir.mkdir(parents=True, exist_ok=True)
     _LOG.info(
         "Starting PPO residual training: total_timesteps=%d, lr=%.3g, "
-        "n_steps=%d, output_dir=%s",
+        "n_steps=%d, log_std_init=%.2f, output_dir=%s",
         total_timesteps,
         learning_rate,
         n_steps,
+        log_std_init,
         str(out_dir),
     )
 
     policy_kwargs: dict[str, Any] = {
         "net_arch": [_DEFAULT_HIDDEN_DIM, _DEFAULT_HIDDEN_DIM],
+        "log_std_init": log_std_init,
     }
     model = PPO(
         "MlpPolicy",
