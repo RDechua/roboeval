@@ -37,7 +37,7 @@ from pathlib import Path
 from statistics import fmean, pstdev
 from typing import Any
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 BOOTSTRAP_DEFAULT_RESAMPLES = 10_000
 BOOTSTRAP_DEFAULT_SEED = 0
@@ -65,17 +65,22 @@ class ConditionStats:
 
     Attributes:
         condition_id: ``"A"`` / ``"B"`` / ``"C"``.
-        label: Human-readable PRD §8.3 condition label.
-        n_runs: Number of evaluation runs (typically 3 — one per seed).
-        per_seed_means: One ``mean_tsr_custom`` per evaluation run (each
-            run already aggregates across its own seed groups).
+        label: Human-readable PRD section 8.3 condition label.
+        n_runs: Number of distinct eval-results payloads that contributed
+            (typically 1 when each condition was run via a single
+            ``roboeval (residual) evaluate`` invocation with
+            ``eval.seeds = [0, 1, 2]``).
+        per_seed_means: All per-seed-group ``mean_tsr_custom`` values,
+            flattened across contributing payloads. With one payload
+            per condition and 3 internal seeds, length is 3 (the
+            PRD section 8.3 reporting unit).
         mean: Mean of ``per_seed_means``.
         std: Population stdev of ``per_seed_means`` (matches PRD
-            "mean ± std" reporting convention).
+            "mean +/- std" reporting convention).
         bootstrap_ci_low: 2.5th percentile of bootstrap distribution.
         bootstrap_ci_high: 97.5th percentile of bootstrap distribution.
         n_rollouts: Total rollouts across all runs (for context only).
-        run_ids: ``run_id`` of each contributing run.
+        run_ids: ``run_id`` of each contributing payload.
     """
 
     condition_id: str
@@ -380,18 +385,35 @@ def bootstrap_ci_mean(
 # --------------------------------------------------------------------------- #
 
 
-def _condition_from_payload(payload: dict[str, Any]) -> tuple[str, float, int, str]:
-    """Extract ``(condition_id, mean_tsr_custom, n_rollouts, run_id)``.
+def _condition_from_payload(
+    payload: dict[str, Any],
+) -> tuple[str, list[float], int, str]:
+    """Extract ``(condition_id, per_seed_tsr_custom, n_rollouts, run_id)``.
 
-    Pulled out so :func:`aggregate_runs` and tests don't both
-    have to know the schema keys.
+    The aggregator treats each *seed group* inside ``per_seed_tsr_custom``
+    as one observation (PRD §8.3: "mean +/- std across 3 random seeds").
+    With ``cfg.eval.seeds = [0, 1, 2]`` a single ``roboeval (residual)
+    evaluate`` invocation already produces three independent
+    observations -- one Welch's-t-test arm is N=3 even from one
+    persisted run, no need to launch three separate processes.
+
+    Falls back to ``[mean_tsr_custom]`` (length 1) when the payload
+    lacks ``per_seed_tsr_custom`` (legacy / partial data); the
+    aggregator surfaces a warning for any condition that ends up
+    with <2 observations.
+
+    Pulled out so :func:`aggregate_runs` and tests don't both have to
+    know the schema keys.
     """
     cid = classify_condition(payload)
     metrics = payload.get("metrics", {})
-    mean_tsr_custom = float(metrics.get("mean_tsr_custom", 0.0))
+    per_seed_raw = metrics.get("per_seed_tsr_custom") or []
+    per_seed = [float(x) for x in per_seed_raw]
+    if not per_seed:
+        per_seed = [float(metrics.get("mean_tsr_custom", 0.0))]
     n_rollouts = int(metrics.get("n_rollouts", 0))
     run_id = str(payload.get("run_id", ""))
-    return (cid, mean_tsr_custom, n_rollouts, run_id)
+    return (cid, per_seed, n_rollouts, run_id)
 
 
 def aggregate_runs(
@@ -402,10 +424,14 @@ def aggregate_runs(
 ) -> AblationReport:
     """Build an :class:`AblationReport` from N eval-results payloads.
 
-    Groups by :func:`classify_condition`, computes per-condition stats,
-    then pairwise compares each non-baseline condition against A.
+    Groups by :func:`classify_condition`, expands each payload's
+    ``per_seed_tsr_custom`` into independent observations, computes
+    per-condition stats, then pairwise compares each non-baseline
+    condition against A. With the default ``eval.seeds = [0, 1, 2]``
+    config block, a single eval invocation per condition is enough to
+    populate Welch's t-test (3 obs per arm).
 
-    Mixed-cell ablations are refused (raises ``ValueError``) — comparing
+    Mixed-cell ablations are refused (raises ``ValueError``) -- comparing
     sparse-on-+5cm against shaped-on-+3cm is meaningless and almost
     always indicates a wrong glob.
 
@@ -438,14 +464,19 @@ def aggregate_runs(
     for k, v in sig_params:
         target_perturbation[k] = v
 
-    grouped: dict[str, list[tuple[float, int, str]]] = {"A": [], "B": [], "C": []}
+    # Each grouped entry: (per_seed_observations, n_rollouts, run_id).
+    grouped: dict[str, list[tuple[list[float], int, str]]] = {
+        "A": [],
+        "B": [],
+        "C": [],
+    }
     unknowns: list[str] = []
     for payload in payloads:
-        cid, mean_tsr_c, n_roll, run_id = _condition_from_payload(payload)
+        cid, per_seed, n_roll, run_id = _condition_from_payload(payload)
         if cid == "unknown":
             unknowns.append(run_id or "<no-run-id>")
             continue
-        grouped[cid].append((mean_tsr_c, n_roll, run_id))
+        grouped[cid].append((per_seed, n_roll, run_id))
 
     warnings: list[str] = []
     if unknowns:
@@ -459,7 +490,9 @@ def aggregate_runs(
         if not runs:
             warnings.append(f"condition {cid} has no runs")
             continue
-        means = [m for m, _, _ in runs]
+        # Flatten per-seed lists across all payloads: each seed group
+        # is one observation, regardless of which payload it came from.
+        means = [m for run_seeds, _, _ in runs for m in run_seeds]
         n_rollouts = sum(n for _, n, _ in runs)
         run_ids = tuple(rid for _, _, rid in runs)
         mean = fmean(means)
@@ -473,13 +506,13 @@ def aggregate_runs(
         else:
             ci_lo = ci_hi = mean
             warnings.append(
-                f"condition {cid} has only one run; bootstrap CI degenerate."
+                f"condition {cid} has only one observation; " "bootstrap CI degenerate."
             )
         conditions.append(
             ConditionStats(
                 condition_id=cid,
                 label=CONDITION_LABELS[cid],
-                n_runs=len(means),
+                n_runs=len(runs),
                 per_seed_means=tuple(means),
                 mean=mean,
                 std=std,
@@ -580,19 +613,20 @@ def format_markdown(report: AblationReport) -> str:
     lines.append("## Per-condition TSR (geometric criterion)")
     lines.append("")
     lines.append(
-        "| Cond | Label | n_runs | mean +/- std | 95% bootstrap CI | "
-        "total rollouts |"
+        "| Cond | Label | n_obs | mean +/- std | 95% bootstrap CI | "
+        "n_payloads | total rollouts |"
     )
     lines.append(
-        "|------|-------|--------|--------------|------------------|"
-        "----------------|"
+        "|------|-------|-------|--------------|------------------|"
+        "------------|----------------|"
     )
     for c in report.conditions:
+        n_obs = len(c.per_seed_means)
         lines.append(
-            f"| {c.condition_id} | {c.label} | {c.n_runs} | "
+            f"| {c.condition_id} | {c.label} | {n_obs} | "
             f"{c.mean:.3f} +/- {c.std:.3f} | "
             f"[{c.bootstrap_ci_low:.3f}, {c.bootstrap_ci_high:.3f}] | "
-            f"{c.n_rollouts} |"
+            f"{c.n_runs} | {c.n_rollouts} |"
         )
     lines.append("")
     if report.comparisons:

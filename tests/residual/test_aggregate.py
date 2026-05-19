@@ -318,14 +318,37 @@ class TestAggregateRuns:
         assert report.comparisons == ()
         assert any("no Condition A" in w for w in report.warnings)
 
-    def test_single_run_condition_warns(self) -> None:
-        payloads = _three_seed_set("A", [0.3, 0.32, 0.34]) + _three_seed_set("B", [0.6])
+    def test_single_observation_condition_warns(self) -> None:
+        """Single-observation condition warns + Welch's t-test is undefined.
+
+        Under per-seed decomposition, a "single observation" means the
+        payload's ``per_seed_tsr_custom`` had length 1 (or was missing,
+        falling back to ``mean_tsr_custom``).
+        """
+        single_obs_payload: dict[str, Any] = {
+            "schema_version": 1,
+            "run_id": "b_single_seed",
+            "perturbation_kind": "spatial",
+            "perturbation_params": {"dx_m": 0.0, "dy_m": 0.05},
+            "policy_kind": "residual_act",
+            "residual": {
+                "reward_kind": "sparse",
+                "alpha_init": 0.05,
+                "log_std_init": -2.0,
+            },
+            "metrics": {
+                "mean_tsr_custom": 0.6,
+                "n_rollouts": 50,
+                "n_seed_groups": 1,
+                "per_seed_tsr_custom": [0.6],
+            },
+        }
+        payloads = [*_three_seed_set("A", [0.3, 0.32, 0.34]), single_obs_payload]
         report = aggregate_runs(payloads, bootstrap_resamples=500)
-        # B is present but single-run → stat math can't compute t.
         b_vs_a = report.comparisons[0]
         assert b_vs_a.t_statistic is None
         assert b_vs_a.significant_at_05 is False
-        assert any("only one run" in w for w in report.warnings)
+        assert any("only one observation" in w for w in report.warnings)
 
     def test_unknown_payloads_surface_as_warning(self) -> None:
         good = _three_seed_set("A", [0.3, 0.35, 0.4])
@@ -358,6 +381,72 @@ class TestAggregateRuns:
     def test_empty_payloads_refused(self) -> None:
         with pytest.raises(ValueError, match="at least one payload"):
             aggregate_runs([])
+
+    def test_single_payload_expands_to_per_seed_observations(self) -> None:
+        """One payload with seeds=[0,1,2] is 3 observations, not 1.
+
+        Aligns with PRD section 8.3 "mean +/- std across 3 random
+        seeds": the seed group is the unit of variation, regardless
+        of how many ``eval_results.json`` files contributed.
+        """
+        # Build one Condition A payload + one Condition B payload, each
+        # with three per-seed values. Aggregator should produce a real
+        # 3-vs-3 Welch's t-test.
+        a_payload = _make_payload(
+            condition="A", run_id="a_single", mean_tsr_custom=0.30
+        )
+        # Inject explicit per-seed values so the test is independent
+        # of _make_payload's synthetic +/- 0.05 spread.
+        a_payload["metrics"]["per_seed_tsr_custom"] = [0.25, 0.30, 0.35]
+        b_payload = _make_payload(
+            condition="B", run_id="b_single", mean_tsr_custom=0.50
+        )
+        b_payload["metrics"]["per_seed_tsr_custom"] = [0.45, 0.50, 0.55]
+        report = aggregate_runs([a_payload, b_payload], bootstrap_resamples=500)
+
+        cond_a = next(c for c in report.conditions if c.condition_id == "A")
+        cond_b = next(c for c in report.conditions if c.condition_id == "B")
+        assert cond_a.per_seed_means == pytest.approx((0.25, 0.30, 0.35))
+        assert cond_b.per_seed_means == pytest.approx((0.45, 0.50, 0.55))
+        assert cond_a.n_runs == 1  # number of payloads
+        assert len(cond_a.per_seed_means) == 3  # number of observations
+
+        # 3-vs-3 Welch's t-test is well-defined.
+        b_vs_a = report.comparisons[0]
+        assert b_vs_a.t_statistic is not None
+        assert b_vs_a.df is not None
+        assert b_vs_a.p_value is not None
+        assert b_vs_a.delta_tsr == pytest.approx(0.20, abs=1e-6)
+
+    def test_per_seed_values_flatten_across_multiple_payloads(self) -> None:
+        """Multiple payloads concatenate their per-seed lists."""
+        p1 = _make_payload(condition="A", run_id="a1", mean_tsr_custom=0.30)
+        p1["metrics"]["per_seed_tsr_custom"] = [0.25, 0.30, 0.35]
+        p2 = _make_payload(condition="A", run_id="a2", mean_tsr_custom=0.40)
+        p2["metrics"]["per_seed_tsr_custom"] = [0.38, 0.40, 0.42]
+        b_payload = _make_payload(condition="B", run_id="b_only", mean_tsr_custom=0.55)
+        b_payload["metrics"]["per_seed_tsr_custom"] = [0.50, 0.55, 0.60]
+
+        report = aggregate_runs([p1, p2, b_payload], bootstrap_resamples=200)
+        cond_a = next(c for c in report.conditions if c.condition_id == "A")
+        assert sorted(cond_a.per_seed_means) == pytest.approx(
+            sorted([0.25, 0.30, 0.35, 0.38, 0.40, 0.42])
+        )
+        assert cond_a.n_runs == 2  # two payloads contributed
+        assert len(cond_a.per_seed_means) == 6  # six observations total
+
+    def test_falls_back_to_mean_when_per_seed_missing(self) -> None:
+        """Legacy payloads without per_seed_tsr_custom contribute one obs."""
+        legacy_a = _make_payload(condition="A", run_id="legacy_a", mean_tsr_custom=0.30)
+        # Strip the per-seed list to simulate a legacy schema.
+        del legacy_a["metrics"]["per_seed_tsr_custom"]
+        b_payload = _make_payload(condition="B", run_id="b", mean_tsr_custom=0.50)
+        b_payload["metrics"]["per_seed_tsr_custom"] = [0.45, 0.50, 0.55]
+        report = aggregate_runs([legacy_a, b_payload], bootstrap_resamples=200)
+        cond_a = next(c for c in report.conditions if c.condition_id == "A")
+        assert cond_a.per_seed_means == pytest.approx((0.30,))
+        # And the aggregator warns about the under-powered A arm.
+        assert any("only one observation" in w for w in report.warnings)
 
 
 # --------------------------------------------------------------------------- #
@@ -398,7 +487,7 @@ class TestLoaderAndSerialisers:
         # JSON-safe.
         serialised = json.dumps(d)
         rehydrated = json.loads(serialised)
-        assert rehydrated["schema_version"] == 1
+        assert rehydrated["schema_version"] == 2
         assert len(rehydrated["conditions"]) == 3
         assert len(rehydrated["comparisons"]) == 2
         assert rehydrated["target_perturbation"]["dy_m"] == pytest.approx(0.05)
