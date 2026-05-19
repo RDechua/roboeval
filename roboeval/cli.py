@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import argparse
 import logging
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 _LOG = logging.getLogger("roboeval.cli")
@@ -94,24 +94,30 @@ def _cmd_smoke(rollout_steps: int) -> int:
     return 0
 
 
-def _cmd_evaluate(config_path: str) -> int:
+def _cmd_evaluate(config_path: str, results_dir: str | None = None) -> int:
     """Run a Hydra-configured ACT evaluation against gym-aloha.
 
     Loads the YAML config, instantiates the policy and env via
     :mod:`roboeval.policies.act_loader` and :mod:`roboeval.envs.aloha`,
     runs the multi-seed evaluation loop, logs to W&B (respecting the
-    config's ``wandb.mode`` so smoke runs can be offline), and prints the
-    final mean ± std TSR to stdout.
+    config's ``wandb.mode`` so smoke runs can be offline), prints the
+    final mean ± std TSR to stdout, and writes a frozen
+    ``eval_results_<run_id>.json`` artifact to disk so downstream
+    aggregation / re-analysis doesn't need to round-trip through W&B.
 
     Args:
         config_path: Path to the Hydra YAML config (e.g.
             ``configs/baseline/act_nominal_fast.yaml``).
+        results_dir: Directory to write ``eval_results_<run_id>.json``
+            into. When ``None`` defaults to
+            ``outputs/eval/<wandb.name_prefix>``.
 
     Returns:
         ``0`` on success, ``1`` if a dependency is missing, ``2`` if
         policy loading fails, ``3`` if the eval itself crashes.
     """
-    from datetime import datetime
+    from datetime import UTC, datetime
+    from pathlib import Path
 
     try:
         from roboeval.envs.aloha import ALOHA_TRANSFER_CUBE_ID, make_aloha_env
@@ -124,6 +130,7 @@ def _cmd_evaluate(config_path: str) -> int:
         from roboeval.evaluation.config import load_eval_config
         from roboeval.evaluation.logger import wandb_run
         from roboeval.evaluation.loop import evaluate_policy
+        from roboeval.evaluation.results_io import write_eval_results
         from roboeval.policies.factory import load_policy
         from roboeval.taxonomy import (
             classify_rollout,
@@ -254,6 +261,33 @@ def _cmd_evaluate(config_path: str) -> int:
             )
             handle.log_distribution(distribution)
 
+            results_out_dir = (
+                Path(results_dir)
+                if results_dir is not None
+                else Path("outputs/eval") / str(cfg.wandb.name_prefix)
+            )
+            results_path = write_eval_results(
+                result,
+                output_dir=results_out_dir,
+                run_id=run_id,
+                config_path=str(config_path),
+                git_sha=_git_sha(),
+                timestamp=datetime.now(UTC).isoformat(),
+                policy_kind=str(cfg.policy.kind),
+                device=policy.device,
+                seeds=list(cfg.eval.seeds),
+                n_rollouts_per_seed=int(cfg.eval.n_rollouts_per_seed),
+                max_steps=int(cfg.eval.max_steps),
+                perturbation_kind=perturb_kind or "none",
+                perturbation_params=perturb_params,
+                success_criterion={
+                    "z_threshold_m": criterion.z_threshold_m,
+                    "xy_tolerance_m": criterion.xy_tolerance_m,
+                    "dwell_steps": criterion.dwell_steps,
+                    "target_xy": list(criterion.target_xy),
+                },
+            )
+
             summary = (
                 f"\n[roboeval] Evaluation complete.\n"
                 f"  mean_tsr        = {result.mean_tsr:.3f} +/- {result.std_tsr:.3f}"
@@ -267,6 +301,7 @@ def _cmd_evaluate(config_path: str) -> int:
                 f"  per_seed_tsr    = {result.per_seed_tsr}\n"
                 f"  failure_dist    = {distribution}\n"
                 f"  auto_labels     = {labels_path}\n"
+                f"  eval_results    = {results_path}\n"
             )
             print(summary)
             if handle.url:
@@ -565,19 +600,28 @@ def _cmd_residual_train(config_path: str) -> int:
     return 0
 
 
-def _cmd_residual_evaluate(config_path: str, residual_path: str) -> int:
+def _cmd_residual_evaluate(
+    config_path: str,
+    residual_path: str,
+    results_dir: str | None = None,
+) -> int:
     """Evaluate a trained PPO residual via the standard evaluate_policy pipeline.
 
     Reuses the eval CLI's machinery (env factory, success detector, W&B
     logging, classifier post-processing) but substitutes
     :class:`ResidualCompositePolicy` for the bare base policy. Produces
-    the same ``auto_labels_<run_id>.json`` artifact and W&B summary, so
-    Condition B / C TSR can be compared directly against Condition A.
+    the same ``auto_labels_<run_id>.json`` artifact and W&B summary as
+    Condition A, plus an ``eval_results_<run_id>.json`` next to the
+    residual checkpoint so the Phase 4 aggregator can read all three
+    conditions from disk.
 
     Args:
         config_path: YAML config (residual training config; this command
             re-reads the perturbation + success blocks from it).
         residual_path: Path to the SB3 PPO ``.zip`` saved by training.
+        results_dir: Directory to write ``eval_results_<run_id>.json``
+            into. When ``None`` defaults to the residual checkpoint's
+            parent directory.
     """
     try:
         from stable_baselines3 import PPO
@@ -592,8 +636,10 @@ def _cmd_residual_evaluate(config_path: str, residual_path: str) -> int:
         from roboeval.evaluation.config import load_eval_config
         from roboeval.evaluation.logger import wandb_run
         from roboeval.evaluation.loop import evaluate_policy
+        from roboeval.evaluation.results_io import write_eval_results
         from roboeval.policies.factory import load_policy
         from roboeval.residual.composite import ResidualCompositePolicy
+        from roboeval.residual.env_wrapper import build_flat_obs, zero_feature_extractor
         from roboeval.residual.policy import ResidualCompositor
         from roboeval.taxonomy import (
             classify_rollout,
@@ -605,7 +651,8 @@ def _cmd_residual_evaluate(config_path: str, residual_path: str) -> int:
         _LOG.error("Run `uv pip install -e '.[dev]'` to install the stack.")
         return 1
 
-    from datetime import datetime
+    from datetime import UTC, datetime
+    from pathlib import Path
 
     register_calibration_resolver()
     cfg = load_eval_config(config_path)
@@ -646,10 +693,31 @@ def _cmd_residual_evaluate(config_path: str, residual_path: str) -> int:
 
     compositor = ResidualCompositor(alpha_init=float(cfg.residual.alpha_init))
     residual_model = PPO.load(residual_path)
+
+    # Build the env once and share it between evaluate_policy and the
+    # composite policy's obs_builder closure. PPO trained on
+    # ResidualEnvWrapper's flat Box obs (agent_pos + cube_state +
+    # base_action + features); the composite must reproduce the same
+    # flat obs at eval time or SB3's obs_to_tensor rejects the dict.
+    # See roboeval/residual/env_wrapper.build_flat_obs for the layout.
+    from roboeval.envs.aloha import get_cube_state
+
+    shared_env = _env_factory()
+
+    def _obs_builder(obs_dict: Mapping[str, Any], base_action: Any) -> Any:
+        return build_flat_obs(
+            obs_dict,
+            base_action,
+            shared_env,
+            feature_extractor=zero_feature_extractor,
+            cube_state_fn=get_cube_state,
+        )
+
     composite = ResidualCompositePolicy(
         base_policy=base_policy,
         residual_model=residual_model,
         compositor=compositor,
+        obs_builder=_obs_builder,
     )
 
     reward_kind = str(cfg.residual.reward.kind)
@@ -681,7 +749,10 @@ def _cmd_residual_evaluate(config_path: str, residual_path: str) -> int:
             mode=str(cfg.wandb.mode),
         ) as handle:
             result = evaluate_policy(
-                env_factory=_env_factory,
+                # Return the pre-built env so the obs_builder closure
+                # above operates on the same dm_control physics handle
+                # evaluate_policy is stepping through.
+                env_factory=lambda: shared_env,
                 policy=composite,
                 detector_factory=lambda: TransferCubeSuccessDetector(criterion),
                 seeds=list(cfg.eval.seeds),
@@ -712,6 +783,44 @@ def _cmd_residual_evaluate(config_path: str, residual_path: str) -> int:
             )
             handle.log_distribution(distribution)
 
+            results_out_dir = (
+                Path(results_dir)
+                if results_dir is not None
+                else Path(residual_path).parent
+            )
+            log_std_init_val = (
+                float(cfg.residual.get("log_std_init", 0.0))
+                if hasattr(cfg.residual, "get")
+                else 0.0
+            )
+            results_path = write_eval_results(
+                result,
+                output_dir=results_out_dir,
+                run_id=run_id,
+                config_path=str(config_path),
+                git_sha=_git_sha(),
+                timestamp=datetime.now(UTC).isoformat(),
+                policy_kind="residual_act",
+                device=composite.device,
+                seeds=list(cfg.eval.seeds),
+                n_rollouts_per_seed=int(cfg.eval.n_rollouts_per_seed),
+                max_steps=int(cfg.eval.max_steps),
+                perturbation_kind=perturb_kind or "none",
+                perturbation_params=perturb_params,
+                success_criterion={
+                    "z_threshold_m": criterion.z_threshold_m,
+                    "xy_tolerance_m": criterion.xy_tolerance_m,
+                    "dwell_steps": criterion.dwell_steps,
+                    "target_xy": list(criterion.target_xy),
+                },
+                residual={
+                    "path": residual_path,
+                    "reward_kind": reward_kind,
+                    "alpha_init": float(cfg.residual.alpha_init),
+                    "log_std_init": log_std_init_val,
+                },
+            )
+
             summary = (
                 f"\n[roboeval residual evaluate] Done.\n"
                 f"  mean_tsr        = {result.mean_tsr:.3f} +/- {result.std_tsr:.3f}\n"
@@ -720,6 +829,7 @@ def _cmd_residual_evaluate(config_path: str, residual_path: str) -> int:
                 f"  per_seed_tsr    = {result.per_seed_tsr}\n"
                 f"  failure_dist    = {distribution}\n"
                 f"  auto_labels     = {labels_path}\n"
+                f"  eval_results    = {results_path}\n"
             )
             print(summary)
             if handle.url:
@@ -727,6 +837,66 @@ def _cmd_residual_evaluate(config_path: str, residual_path: str) -> int:
     except Exception as exc:  # noqa: BLE001 - cli-level boundary
         _LOG.exception("Residual evaluation crashed: %s", exc)
         return 3
+
+    return 0
+
+
+def _cmd_residual_aggregate(
+    results_paths: Sequence[str],
+    output_path: str | None,
+) -> int:
+    """Aggregate Phase 4 ablation results (PRD §8.3).
+
+    Reads N ``eval_results_<run_id>.json`` artifacts (Conditions A / B /
+    C across seed groups), computes per-condition mean ± std + 95%
+    bootstrap CI, performs one-sided Welch's t-tests for each
+    non-baseline condition vs A, and prints a markdown report. When
+    ``--output`` is provided the same report is persisted as JSON.
+
+    Args:
+        results_paths: One or more paths to ``eval_results_*.json``
+            files produced by ``roboeval evaluate`` / ``roboeval
+            residual evaluate``. Glob expansion is the caller's job
+            (the shell does it).
+        output_path: When provided, write the report's JSON
+            serialisation to this path. The markdown summary is always
+            printed to stdout.
+
+    Returns:
+        ``0`` on success, ``1`` if a path doesn't exist, ``2`` if the
+        aggregator refuses the input (e.g. mixed perturbation cells).
+    """
+    import json
+    from pathlib import Path
+
+    from roboeval.residual.aggregate import (
+        aggregate_runs,
+        format_markdown,
+        load_eval_results,
+        report_to_dict,
+    )
+
+    paths = [Path(p) for p in results_paths]
+    missing = [p for p in paths if not p.exists()]
+    if missing:
+        for p in missing:
+            _LOG.error("results file not found: %s", p)
+        return 1
+
+    payloads = load_eval_results(paths)
+    try:
+        report = aggregate_runs(payloads)
+    except ValueError as exc:
+        _LOG.error("aggregate_runs refused the input: %s", exc)
+        return 2
+
+    print(format_markdown(report))
+
+    if output_path is not None:
+        out = Path(output_path)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(report_to_dict(report), indent=2))
+        print(f"\n[roboeval residual aggregate] Wrote JSON report: {out}")
 
     return 0
 
@@ -769,6 +939,14 @@ def _build_parser() -> argparse.ArgumentParser:
         "--config",
         required=True,
         help="Path to YAML config (e.g. configs/baseline/act_nominal_fast.yaml).",
+    )
+    evaluate.add_argument(
+        "--results-dir",
+        default=None,
+        help=(
+            "Directory to write eval_results_<run_id>.json. "
+            "Defaults to outputs/eval/<wandb.name_prefix>/."
+        ),
     )
 
     calibrate = subparsers.add_parser(
@@ -829,6 +1007,36 @@ def _build_parser() -> argparse.ArgumentParser:
             "(the .zip file written by stable_baselines3)."
         ),
     )
+    residual_eval.add_argument(
+        "--results-dir",
+        default=None,
+        help=(
+            "Directory to write eval_results_<run_id>.json. "
+            "Defaults to the residual checkpoint's parent directory."
+        ),
+    )
+
+    residual_agg = residual_sub.add_parser(
+        "aggregate",
+        help=(
+            "Aggregate Phase 4 ablation results across conditions and seeds "
+            "(PRD §8.3): ΔTSR, Welch's t-test, bootstrap CI."
+        ),
+    )
+    residual_agg.add_argument(
+        "results_paths",
+        nargs="+",
+        help=(
+            "One or more eval_results_<run_id>.json paths "
+            "(shell globs expanded by the caller, e.g. "
+            "'outputs/residual/y+5cm_*/eval_results_*.json')."
+        ),
+    )
+    residual_agg.add_argument(
+        "--output",
+        default=None,
+        help="Optional path to write the JSON-serialised report to.",
+    )
 
     return parser
 
@@ -850,7 +1058,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "smoke":
         return _cmd_smoke(int(args.steps))
     if args.command == "evaluate":
-        return _cmd_evaluate(str(args.config))
+        return _cmd_evaluate(
+            config_path=str(args.config),
+            results_dir=(None if args.results_dir is None else str(args.results_dir)),
+        )
     if args.command == "calibrate":
         return _cmd_calibrate(
             config_path=str(args.config),
@@ -864,6 +1075,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _cmd_residual_evaluate(
                 config_path=str(args.config),
                 residual_path=str(args.residual_path),
+                results_dir=(
+                    None if args.results_dir is None else str(args.results_dir)
+                ),
+            )
+        if args.residual_cmd == "aggregate":
+            return _cmd_residual_aggregate(
+                results_paths=[str(p) for p in args.results_paths],
+                output_path=(None if args.output is None else str(args.output)),
             )
         raise AssertionError(f"unhandled residual_cmd: {args.residual_cmd!r}")
     # Unreachable: subparsers(required=True) enforces a known command.

@@ -1,4 +1,4 @@
-# RoboEval — Current State (2026-05-18, Week 6 Day 1)
+# RoboEval — Current State (2026-05-19, Week 6 Day 2)
 
 A tight session-handoff anchor. `docs/PRD.md` is "what we're building",
 `docs/research-log.md` is "what happened week-by-week", this file is
@@ -78,7 +78,7 @@ failure (Recovery + Approach), harder residual-RL signal.
 
 - Python 3.11, `mypy --strict`, ruff, `lerobot==0.4.4`, MuJoCo+gym-aloha,
   Stable-Baselines3, Hydra (OmegaConf), W&B, matplotlib, Plotly+Dash.
-- **32 source files** in `roboeval/` + `scripts/`, **199 tests passing**.
+- **34 source files** in `roboeval/` + `scripts/`, **242 tests passing**.
 - CI: ruff + ruff-format + mypy + pytest on push/PR, CPU-only torch wheel.
 
 ## Module map
@@ -96,6 +96,7 @@ roboeval/
 ├── evaluation/calibration.py  # calibrate_target_xy + ${calibration:...} resolver
 ├── evaluation/config.py       # load_eval_config with extends: support
 ├── evaluation/logger.py       # W&B ctx mgr + log_distribution + run_id; 20-col table
+├── evaluation/results_io.py   # schema-v1 eval_results_<run_id>.json writer (NEW)
 ├── policies/base.py           # Policy Protocol (declares policy_id, device)
 ├── policies/act_loader.py     # ACTPolicyAdapter, lazy lerobot imports
 ├── policies/factory.py        # load_policy(kind, ...); diffusion = v1.1
@@ -108,7 +109,9 @@ roboeval/
     ├── composite.py           # ResidualCompositePolicy (Policy adapter for eval)
     ├── reward.py              # sparse + shaped + combined reward functions
     ├── env_wrapper.py         # gym wrapper composing base + residual
-    └── train.py               # SB3 PPO training loop
+    ├── train.py               # SB3 PPO training loop
+    └── aggregate.py           # PRD §8.3 ablation: Welch's t-test +
+                                #   bootstrap CI, stdlib-only (NEW)
 
 scripts/
 ├── relabel_from_wandb.py         # post-hoc relabel a completed W&B run
@@ -158,6 +161,28 @@ docs/figures/temporal_degradation_curve.png     # §6.4 temporal-axis panel B
      - alpha_init: 0.1 → 0.05
      - log_std_init: 0.0 → -2.0 (std≈0.14)
      train.py now plumbs log_std_init through to PPO's policy_kwargs.
+  4. **Ablation aggregator ready (PRD §8.3 deliverable)**.
+     `roboeval residual aggregate <eval_results_*.json>` reads N
+     persisted run summaries, classifies by condition (A=frozen base,
+     B=sparse, C=shaped), and emits per-condition mean±std + 95%
+     bootstrap CI + one-sided Welch's t-test per non-baseline
+     condition vs A. Stdlib-only math (Student-t CDF via
+     incomplete-beta Lentz CF) so the aggregator runs in CI without
+     scipy/numpy. Both `roboeval evaluate` and
+     `roboeval residual evaluate` now persist
+     `eval_results_<run_id>.json` next to their other artifacts so the
+     aggregator has something to read.
+  5. **Eval-time obs-format bug fixed**. PPO trained on the wrapper's
+     flat Box(35,) obs; the original `ResidualCompositePolicy` was
+     passing the raw gym-aloha Dict to `model.predict`, crashing
+     SB3's `obs_to_tensor` with "The observation provided is a dict
+     but the obs space is Box(-inf, inf, (35,), float32)". Fixed by
+     extracting `build_flat_obs` to module top in `env_wrapper.py` so
+     train + eval share one builder, then adding an `obs_builder`
+     hook to `ResidualCompositePolicy` and wiring the eval CLI to
+     construct it bound to the shared env + the same feature
+     extractor used at training. Regression test in
+     `tests/residual/test_composite.py`.
 - **G5 Communication** — not started (Week 8)
 - **G6 Launch** — not started (Weeks 9–10)
 
@@ -210,8 +235,22 @@ Week 6 Day 2 — retry residual training with safer defaults:
    roboeval residual evaluate --config <same> \
      --residual-path outputs/residual/y+5cm_sparse/ppo_residual.zip
    ```
-   Produces auto_labels JSON + W&B summary; PRD §8.3 ablation table
-   is a direct A/B/C comparison.
+   Produces auto_labels JSON, eval_results_<id>.json (next to the
+   .zip, drives the aggregator below), and a W&B summary.
+3a. **Condition A** = re-run `roboeval evaluate --config
+   configs/perturbation/spatial/act_spatial_y+5cm.yaml` once per seed
+   (override `eval.seeds` in 3 ad-hoc configs OR add a `--seed` CLI
+   override — v1.1 follow-up). Each run drops
+   `outputs/eval/act_spatial_y+5cm/eval_results_<id>.json`.
+3b. **Aggregate** when 3 conditions × 3 seeds is on disk:
+   ```
+   roboeval residual aggregate \
+     outputs/eval/act_spatial_y+5cm/eval_results_*.json \
+     outputs/residual/y+5cm_sparse/eval_results_*.json \
+     outputs/residual/y+5cm_shaped/eval_results_*.json \
+     --output docs/figures/phase4_ablation.json
+   ```
+   Prints the PRD §8.3 markdown table + persists JSON for the writeup.
 4. **Manual κ relabel** when 2026-05-24 unlock hits — samples are
    already exported (run IDs `alr0r0p2` and `18xb5ob0`).
 5. **v1.1 design item**: make alpha co-trainable via custom SB3
