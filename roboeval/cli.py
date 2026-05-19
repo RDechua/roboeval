@@ -536,6 +536,11 @@ def _cmd_residual_train(config_path: str) -> int:
     compositor = ResidualCompositor(alpha_init=float(cfg.residual.alpha_init))
     res_cfg = cfg.residual
 
+    log_std_init_raw: Any = (
+        res_cfg.get("log_std_init", 0.0) if hasattr(res_cfg, "get") else 0.0
+    )
+    log_std_init = float(log_std_init_raw) if log_std_init_raw is not None else 0.0
+
     try:
         save_path = train_residual(
             base_env_factory=_env_factory,
@@ -550,6 +555,7 @@ def _cmd_residual_train(config_path: str) -> int:
             n_epochs=int(res_cfg.n_epochs),
             gamma=float(res_cfg.gamma),
             seed=int(res_cfg.seed),
+            log_std_init=log_std_init,
         )
     except Exception as exc:  # noqa: BLE001 - cli-level boundary
         _LOG.exception("Residual PPO training crashed: %s", exc)

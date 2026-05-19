@@ -1,4 +1,4 @@
-# RoboEval — Current State (2026-05-17, Week 5 Day 3)
+# RoboEval — Current State (2026-05-18, Week 6 Day 1)
 
 A tight session-handoff anchor. `docs/PRD.md` is "what we're building",
 `docs/research-log.md` is "what happened week-by-week", this file is
@@ -78,7 +78,7 @@ failure (Recovery + Approach), harder residual-RL signal.
 
 - Python 3.11, `mypy --strict`, ruff, `lerobot==0.4.4`, MuJoCo+gym-aloha,
   Stable-Baselines3, Hydra (OmegaConf), W&B, matplotlib, Plotly+Dash.
-- **32 source files** in `roboeval/` + `scripts/`, **193 tests passing**.
+- **32 source files** in `roboeval/` + `scripts/`, **199 tests passing**.
 - CI: ruff + ruff-format + mypy + pytest on push/PR, CPU-only torch wheel.
 
 ## Module map
@@ -141,14 +141,23 @@ docs/figures/temporal_degradation_curve.png     # §6.4 temporal-axis panel B
   classifier rules wired + auto-labels artifact produced per eval run.
   PRD §7.3 step 4 relabel-sample exporter live; +5cm and -5cm samples
   exported, unlock 2026-05-24.
-- **G4 Residual RL** ⏳ Phase 4 scaffold complete (`roboeval/residual/`:
-  ResidualMLP per PRD §8.2 spec, ResidualCompositor with alpha-init
-  parameter [fixed-per-run in v1; co-trainable α is a v1.1 design item],
-  env wrapper, SB3 PPO training entry point, ResidualCompositePolicy
-  for evaluation). CLI subcommands: `roboeval residual train --config`
-  and `roboeval residual evaluate --config --residual-path`. Configs
-  for Conditions B (sparse) and C (shaped) at +5cm target. Training
-  run not started yet.
+- **G4 Residual RL** ⏳ Scaffold complete + first training attempt
+  diagnosed and aborted. Found two bugs and an explored-vs-exploited
+  knob mismatch:
+  1. **gym-aloha's nested Dict obs broke SB3** — fixed by exposing a
+     flat Box obs (agent_pos + cube_state + base_action + features).
+  2. **Double `base.select_action` per env step** — would have
+     advanced ACT's chunk pointer 2x per env step. Fixed by caching
+     the next base action.
+  3. **PPO destroyed the base** at α_init=0.1 + log_std_init=0.0
+     (default). With std=1.0 the per-step perturbation magnitude was
+     ~0.2 — large enough to push ACT off its narrow successful
+     trajectory. ep_rew_mean stayed at 0.0 across 143k steps (0/358
+     episodes vs the bare-base 30.7% baseline). Fixed by safer
+     defaults in the configs:
+     - alpha_init: 0.1 → 0.05
+     - log_std_init: 0.0 → -2.0 (std≈0.14)
+     train.py now plumbs log_std_init through to PPO's policy_kwargs.
 - **G5 Communication** — not started (Week 8)
 - **G6 Launch** — not started (Weeks 9–10)
 
@@ -181,29 +190,57 @@ docs/figures/temporal_degradation_curve.png     # §6.4 temporal-axis panel B
 
 ## Next session intent
 
-Week 6 — kick off Phase 4 residual RL training:
+Week 6 Day 2 — retry residual training with safer defaults:
 
-1. **ACT-encoder feature-extractor hook.** Currently `zero_feature_
-   extractor` returns a 0-dim vector; residual conditions only on the
-   base action. Wire up a hook into the ACT policy's encoder forward
-   so the residual sees the actual perceptual features. Lerobot
-   internals; needs M1 access to validate against the real ACT
-   checkpoint.
-2. **Run Condition B (sparse) first** with one seed via
-   `roboeval residual train --config configs/residual/residual_ppo_y+5cm_sparse.yaml`
-   (~1h on M1 at 500k steps with action-chunked inference). Sanity-check
-   training curves in W&B; if PPO is learning anything, run the
-   remaining 2 seeds + the 3 Condition C seeds.
-3. **Evaluate trained residual** via
-   `roboeval residual evaluate --config <same> --residual-path
-   outputs/residual/y+5cm_sparse/ppo_residual.zip`. Produces the
-   same auto_labels JSON + W&B summary as the bare-base eval, so
-   the PRD §8.3 ablation table is a direct comparison.
+1. **First: a 1-minute wrapper sanity check.** Confirms the wrapper
+   composition isn't itself the bug (vs PPO learning dynamics):
+   ```
+   roboeval residual train --config configs/residual/residual_ppo_y+5cm_sparse.yaml
+   ```
+   Watch the first iteration's ep_rew_mean. With alpha_init=0.05 +
+   log_std_init=-2.0 and a 30.7% bare-base TSR, you SHOULD see ~0.3
+   ep_rew_mean from iteration 1 (PPO hasn't trained yet; the residual
+   contributes <0.01 per dim, so the composed action ≈ base action).
+   If you see 0.0, the wrapper is the problem. If you see ~0.3,
+   the safer defaults worked and you can let it train.
+2. **Run Condition B (sparse) to completion** if step 1 is healthy.
+   ~3.5h on M1 at 500k steps. Then 2 more seeds + Condition C.
+3. **Evaluate each trained residual** via
+   ```
+   roboeval residual evaluate --config <same> \
+     --residual-path outputs/residual/y+5cm_sparse/ppo_residual.zip
+   ```
+   Produces auto_labels JSON + W&B summary; PRD §8.3 ablation table
+   is a direct A/B/C comparison.
 4. **Manual κ relabel** when 2026-05-24 unlock hits — samples are
-   already exported (`alr0r0p2` and `18xb5ob0`).
-5. **v1.1 design item**: make alpha co-trainable with PPO via a
-   custom SB3 policy class. Out of scope for v1 — for now sweep
-   `alpha_init` across runs (0.05, 0.1, 0.3) and pick the best.
-6. **Optional**: visual / dynamic perturbation axes. Deferred per
-   Week 5 Day 3 conclusion — the spatial+temporal pair already
-   supplies the cross-axis comparison; adding axes adds polish.
+   already exported (run IDs `alr0r0p2` and `18xb5ob0`).
+5. **v1.1 design item**: make alpha co-trainable via custom SB3
+   policy. Out of scope; sweep `alpha_init` across runs.
+6. **v1.1 design item**: ACT-encoder feature-extractor hook for the
+   residual MLP input. Currently residual conditions on privileged
+   sim state (agent_pos + cube_state); ACT encoder features would
+   make the residual sim-to-real portable.
+7. **Optional**: visual / dynamic perturbation axes. Deferred.
+
+## Handoff conventions (preserve across compaction)
+
+- **Patch delivery path**: ALWAYS `/Users/rubenodehcua/Downloads/` —
+  NOT `~/Downloads/`. The user has a Mac with this absolute path.
+- **Patch filename length**: ≤ 50 chars total (including `.patch`)
+  because Safari truncates ~57 chars. I generate a short-named copy
+  via `cp /tmp/patches/0001-foo-bar-...patch /tmp/patches/0001short.patch`.
+- **Commit author**: `Rubeno Dechua <rubenodechua123@gmail.com>`.
+  NO `Co-Authored-By: Claude` trailers anywhere. CLAUDE.md and
+  `.claude/` are gitignored.
+- **Apply pattern**: `git am /Users/rubenodehcua/Downloads/<file> && git push origin main`.
+- **All gates must pass before commit**: ruff check, ruff format,
+  mypy --strict, pytest.
+- **CI runs minimal deps** (no matplotlib, no SB3). Use
+  `pytest.importorskip(...)` to gate tests on optional deps.
+- **Headline data** (Phase 3 complete): 7 spatial cells (-5→+5 cm)
+  + 3 temporal cells (1/3/5 step delay). Same Recovery-dominant
+  failure mode both axes; spatial brittle (67 pp drop at -5cm),
+  temporal robust (11 pp at 5 steps). Phase 4 target: +5cm.
+- **Open data question**: cross-session `mean_tsr_custom` drift
+  (0.680 → 0.727) on nominal cell with same seeds. Mock-env
+  determinism test green; real-env audit deferred.

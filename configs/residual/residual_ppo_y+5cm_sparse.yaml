@@ -7,6 +7,14 @@
 #
 # Wall-time on M1 MPS: TBD. 500k env-steps at ~25 ms/step = ~3.5 h.
 # Total ablation suite (3 conditions x 3 seeds): ~30 h.
+#
+# Safer defaults after the first attempt destroyed the base policy:
+# - alpha_init 0.05 (was 0.1): smaller mixing scalar so even with
+#   large initial residual samples the perturbation stays small.
+# - log_std_init -2.0 (new, was 0.0/std=1.0): PPO's initial Gaussian
+#   has std~0.14 instead of 1.0. With alpha=0.05, initial per-dim
+#   perturbation is ~0.007 -- well below ACT's typical action scale,
+#   so the wrapper preserves base TSR while PPO bootstraps.
 
 extends: configs/baseline/act_nominal.yaml
 
@@ -19,7 +27,8 @@ residual:
   reward:
     kind: sparse
     shaping_weight: 0.0
-  alpha_init: 0.1
+  alpha_init: 0.05
+  log_std_init: -2.0
   total_timesteps: 500000
   learning_rate: 3.0e-4
   n_steps: 2048
