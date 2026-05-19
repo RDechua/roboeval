@@ -78,7 +78,7 @@ failure (Recovery + Approach), harder residual-RL signal.
 
 - Python 3.11, `mypy --strict`, ruff, `lerobot==0.4.4`, MuJoCo+gym-aloha,
   Stable-Baselines3, Hydra (OmegaConf), W&B, matplotlib, Plotly+Dash.
-- **34 source files** in `roboeval/` + `scripts/`, **242 tests passing**.
+- **34 source files** in `roboeval/` + `scripts/`, **245 tests passing**.
 - CI: ruff + ruff-format + mypy + pytest on push/PR, CPU-only torch wheel.
 
 ## Module map
@@ -171,7 +171,12 @@ docs/figures/temporal_degradation_curve.png     # §6.4 temporal-axis panel B
      scipy/numpy. Both `roboeval evaluate` and
      `roboeval residual evaluate` now persist
      `eval_results_<run_id>.json` next to their other artifacts so the
-     aggregator has something to read.
+     aggregator has something to read. Schema v2: per-seed
+     decomposition — each payload's `per_seed_tsr_custom` list
+     contributes N independent observations to its condition, so a
+     single eval run with `eval.seeds = [0, 1, 2]` already populates
+     Welch's t-test (3 obs per arm) instead of needing 3 separate
+     `evaluate` invocations.
   5. **Eval-time obs-format bug fixed**. PPO trained on the wrapper's
      flat Box(35,) obs; the original `ResidualCompositePolicy` was
      passing the raw gym-aloha Dict to `model.predict`, crashing

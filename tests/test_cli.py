@@ -244,7 +244,7 @@ def test_residual_aggregate_subcommand(
     assert "Frozen base only" in captured.out
     assert out_json.exists()
     payload = json.loads(out_json.read_text())
-    assert payload["schema_version"] == 1
+    assert payload["schema_version"] == 2
     assert len(payload["conditions"]) == 3
     assert len(payload["comparisons"]) == 2
 
