@@ -712,3 +712,128 @@ We now have two-axis data with a coherent narrative. Outline:
 
 This is the section the report needs. Drafting it for the PRD belongs to a separate commit; this entry is the data and the narrative.
 
+## Week 6 — 2026-05-20 (Days 1–3: Phase 4 residual RL, sparse + shaped, honest null)
+
+Phase 4 closed end-to-end across three calendar days. Detailed
+deliverable in `docs/phase4_ablation.md`; this entry is the
+condensed narrative.
+
+### Headline
+
+Two reward shapings of the standard "frozen base + small MLP
+residual" recipe both degraded the +5 cm baseline:
+
+| Cond | mean_tsr_custom | ΔTSR vs base | Recovery share |
+|---|---:|---:|---:|
+| A — Frozen ACT | 0.320 | — | 59.3 % |
+| B — Sparse residual | 0.187 | **−13.3 pp** | 70.7 % |
+| C — Shaped residual | 0.213 | **−10.7 pp** | 73.3 % |
+
+Honest null per PRD §8.3. Recommendations and v1.1 ablations live
+in the writeup.
+
+### Three bugs found and fixed along the way
+
+Phase 4 was 60 % infrastructure work, 40 % training. Three bugs
+surfaced in sequence; each one was a chance to harden the harness:
+
+1. **gym-aloha's nested Dict obs broke SB3.** Fixed by exposing a
+   flat Box obs from `ResidualEnvWrapper` (agent_pos + cube_state +
+   base_action + features = 35-dim).
+2. **Double `base.select_action` per env step.** ACT advances its
+   chunk pointer on every call, so calling twice per env step would
+   skew the action sequence by 2×. Fixed by caching the next base
+   action in the wrapper.
+3. **PPO destroyed the base at α_init = 0.1, log_std_init = 0.0.**
+   Per-dim perturbation ≈ ±0.2 — large enough to push ACT off its
+   narrow successful trajectory. `ep_rew_mean` stayed at 0 across
+   143k steps (vs the bare-base 30.7 %). Fixed by safer defaults:
+   α_init = 0.05, log_std_init = −2.0 (initial std ≈ 0.135).
+4. **Eval-time obs-format mismatch.** PPO trained on the flat
+   Box(35,) obs from the wrapper, but `ResidualCompositePolicy` was
+   passing the raw gym-aloha Dict to `model.predict` at eval time —
+   SB3's `obs_to_tensor` rejected it. Fixed by extracting
+   `build_flat_obs` to module top so train + eval share one builder,
+   adding an `obs_builder` hook to the composite policy, and wiring
+   the eval CLI to construct it bound to the shared env.
+
+Each bug got a regression test (`tests/residual/test_*.py`).
+
+### Aggregator + persisted artifacts (PRD §8.3 plumbing)
+
+To make the ablation table reproducible without W&B round-trips,
+two new modules:
+
+- `roboeval/evaluation/results_io.py`: schema-v1
+  `eval_results_<run_id>.json` writer; persists every rollout +
+  aggregate metrics + run metadata. Both `roboeval evaluate` and
+  `roboeval residual evaluate` now drop one per run.
+- `roboeval/residual/aggregate.py`: classifies payloads by
+  condition, computes mean ± std + 95 % bootstrap CI + one-sided
+  Welch's t-test per non-baseline condition vs A. **Stdlib-only**
+  stats math (Student-t CDF via incomplete-beta Lentz continued
+  fraction) — CI runs the aggregator without scipy/numpy. Schema
+  v2 decomposes each payload's `per_seed_tsr_custom` into
+  independent observations so a single eval invocation with
+  `seeds=[0, 1, 2]` already populates Welch's t-test (3 obs/arm).
+
+CLI: `roboeval residual aggregate <eval_results_*.json>...
+[--output report.json]`.
+
+### Diagnostic that explained the null result
+
+At α = 0.05, σ ≈ 0.135, the per-step residual magnitude is roughly
+±0.007 per dim — tiny relative to ACT's action range. So the
+degradation isn't magnitude-driven; it's *directional*. PPO's MLP
+learned a state-conditional mean that consistently nudges in a
+harmful direction. Over ~385 steps that compounds.
+
+This is a known failure mode of residual RL on chunked-action base
+policies: the base policy's successful trajectory is a narrow ribbon
+in state-action space, and even small per-step perturbations push
+the state off that ribbon. By the time PPO accumulates enough reward
+signal to learn the correction direction, the gradient is biased by
+the rollouts that landed on the ribbon (and got reward) — toward the
+wrong correction.
+
+Shaped reward helps marginally: Approach failures drop from +4.6 pp
+(sparse) to +1.3 pp (shaped). The L2 distance term gives a dense
+gradient that prevents the "pull away from cube" miscorrection. But
+the shaping rewards the cube COM, not the geometry of a grasp, so
+the residual gets *close* to the cube without completing the task —
+hence Recovery dominates even more under C than under B.
+
+### Cost
+
+- 2 × 7 h M1 training runs (B sparse + C shaped) at 500 k env steps
+  each.
+- 3 × ~50 min M1 eval runs (A, B, C at 3 seed groups × 50
+  rollouts each).
+- Total wall-clock for the trained-policy results: ~16 h spread
+  across May 18 (failed run + diagnosis), May 19 (B training +
+  eval + aggregator infra), May 20 (C training + evals +
+  aggregation + writeup).
+
+### What's left in Phase 4
+
+- ✅ G4 deliverables: ablation table, ΔTSR, Welch's t-test, honest
+  null analysis (`docs/phase4_ablation.md`).
+- ⏳ Generate the failure-mode comparison figure
+  (`docs/figures/phase4_ablation_failure_distribution.png`) — the
+  command is in the writeup; trivial run.
+- ⏳ κ-relabel for the +5 cm and −5 cm samples unlocks 2026-05-24
+  (Sunday). Closes G3 cleanly.
+
+### Carry-forward
+
+- **Co-trainable α** is the v1.1 priority — it'd lower-bound any
+  future residual ablation to "no harm" via α → 0 collapse.
+- **Distillation-init residual** (zero output-layer bias and shrink
+  weights) is a 1-line change that should be tried before any new
+  reward function.
+- **The +5 cm cell may not be the right Phase-4 cell after all.**
+  +1 cm (TSR 0.72) and +3 cm (TSR 0.55) have more headroom for
+  small additive corrections. Worth a re-run under the v1.1
+  recommendations.
+
+

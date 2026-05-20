@@ -1,4 +1,4 @@
-# RoboEval — Current State (2026-05-19, Week 6 Day 2)
+# RoboEval — Current State (2026-05-20, Week 6 Day 3, G4 closed)
 
 A tight session-handoff anchor. `docs/PRD.md` is "what we're building",
 `docs/research-log.md` is "what happened week-by-week", this file is
@@ -7,13 +7,19 @@ welcome (it's a snapshot, not a journal).
 
 ## Phase
 
-Phase 3 (robustness study) in progress. Gates G1 (foundation) and G2
-(baseline) closed. Week 5 trajectory-data extension + classifier wire-up
-complete; **full spatial axis (−5 → +5 cm, 7 cells) and temporal axis
-(1/3/5 step delay, 3 cells) both run** with failure-mode distributions.
-Cross-axis finding: ACT's failure mode is policy-architecture-specific
-(both axes produce Recovery), but elasticity differs 4-6× (spatial brittle,
-temporal robust). Phase 4 base-policy target: +5cm.
+**Phase 4 closed**: residual RL ablation complete at +5 cm cell;
+honest null result documented in `docs/phase4_ablation.md`. Gates
+G1, G2, G4 closed. G3 carries the κ-relabel waiting on the 2026-05-24
+unlock; otherwise robustness work complete. **Next up: Phase 5
+(Communication) — dashboard, demo video, blog post.**
+
+Cross-phase finding still standing: ACT's failure mode is
+policy-architecture-specific (both spatial and temporal axes produce
+Recovery), but elasticity differs 4-6× (spatial brittle, temporal
+robust). Residual RL on +5 cm was the cleanest target identified by
+Phase 3, but the trained residual hurt the base by 13.3 pp (sparse)
+/ 10.7 pp (shaped) — see `docs/phase4_ablation.md` for the analysis
+and v1.1 recommendations.
 
 ## Headline numbers
 
@@ -133,6 +139,8 @@ docs/figures/spatial_failure_distribution.png   # §6.4 panel A (stacked-bar)
 docs/figures/spatial_degradation_curve.png      # §6.4 panel B (TSR + SE floor)
 docs/figures/temporal_failure_distribution.png  # §6.4 temporal-axis panel A
 docs/figures/temporal_degradation_curve.png     # §6.4 temporal-axis panel B
+docs/figures/phase4_ablation.json               # PRD §8.3 aggregator output
+docs/phase4_ablation.md                         # PRD §8.3 G4 writeup
 ```
 
 ## Quality gates (PRD §9.2)
@@ -144,9 +152,10 @@ docs/figures/temporal_degradation_curve.png     # §6.4 temporal-axis panel B
   classifier rules wired + auto-labels artifact produced per eval run.
   PRD §7.3 step 4 relabel-sample exporter live; +5cm and -5cm samples
   exported, unlock 2026-05-24.
-- **G4 Residual RL** ⏳ Scaffold complete + first training attempt
-  diagnosed and aborted. Found two bugs and an explored-vs-exploited
-  knob mismatch:
+- **G4 Residual RL** ✓ Closed 2026-05-20. Honest null result per
+  PRD §8.3: ΔTSR = −13.3 pp (sparse), −10.7 pp (shaped) vs frozen
+  base at +5 cm. Full writeup in `docs/phase4_ablation.md`. Six
+  intermediate findings + fixes:
   1. **gym-aloha's nested Dict obs broke SB3** — fixed by exposing a
      flat Box obs (agent_pos + cube_state + base_action + features).
   2. **Double `base.select_action` per env step** — would have
@@ -188,6 +197,16 @@ docs/figures/temporal_degradation_curve.png     # §6.4 temporal-axis panel B
      construct it bound to the shared env + the same feature
      extractor used at training. Regression test in
      `tests/residual/test_composite.py`.
+  6. **Trained, evaluated, aggregated.** Condition A (frozen ACT
+     at +5 cm): mean_tsr_custom = 0.320. Condition B (sparse,
+     500 k steps, ~7 h M1): 0.187 → ΔTSR −13.3 pp. Condition C
+     (shaped, 500 k steps, ~7 h M1): 0.213 → ΔTSR −10.7 pp.
+     Per-seed and failure-mode breakdowns in
+     `docs/phase4_ablation.md`. Recovery share grows from 59 %
+     (A) to 71 % (B) / 73 % (C); residual training systematically
+     converts successes into Recovery failures. Honest null per
+     PRD §8.3; v1.1 recommendations (co-trainable α, distillation
+     init, ACT-encoder features) listed in the writeup.
 - **G5 Communication** — not started (Week 8)
 - **G6 Launch** — not started (Weeks 9–10)
 
@@ -220,51 +239,44 @@ docs/figures/temporal_degradation_curve.png     # §6.4 temporal-axis panel B
 
 ## Next session intent
 
-Week 6 Day 2 — retry residual training with safer defaults:
+Phase 4 closed. Transition to **Phase 5 (Communication, Week 8)**
+with two small wrap-up items first:
 
-1. **First: a 1-minute wrapper sanity check.** Confirms the wrapper
-   composition isn't itself the bug (vs PPO learning dynamics):
-   ```
-   roboeval residual train --config configs/residual/residual_ppo_y+5cm_sparse.yaml
-   ```
-   Watch the first iteration's ep_rew_mean. With alpha_init=0.05 +
-   log_std_init=-2.0 and a 30.7% bare-base TSR, you SHOULD see ~0.3
-   ep_rew_mean from iteration 1 (PPO hasn't trained yet; the residual
-   contributes <0.01 per dim, so the composed action ≈ base action).
-   If you see 0.0, the wrapper is the problem. If you see ~0.3,
-   the safer defaults worked and you can let it train.
-2. **Run Condition B (sparse) to completion** if step 1 is healthy.
-   ~3.5h on M1 at 500k steps. Then 2 more seeds + Condition C.
-3. **Evaluate each trained residual** via
-   ```
-   roboeval residual evaluate --config <same> \
-     --residual-path outputs/residual/y+5cm_sparse/ppo_residual.zip
-   ```
-   Produces auto_labels JSON, eval_results_<id>.json (next to the
-   .zip, drives the aggregator below), and a W&B summary.
-3a. **Condition A** = re-run `roboeval evaluate --config
-   configs/perturbation/spatial/act_spatial_y+5cm.yaml` once per seed
-   (override `eval.seeds` in 3 ad-hoc configs OR add a `--seed` CLI
-   override — v1.1 follow-up). Each run drops
-   `outputs/eval/act_spatial_y+5cm/eval_results_<id>.json`.
-3b. **Aggregate** when 3 conditions × 3 seeds is on disk:
-   ```
-   roboeval residual aggregate \
-     outputs/eval/act_spatial_y+5cm/eval_results_*.json \
-     outputs/residual/y+5cm_sparse/eval_results_*.json \
-     outputs/residual/y+5cm_shaped/eval_results_*.json \
-     --output docs/figures/phase4_ablation.json
-   ```
-   Prints the PRD §8.3 markdown table + persists JSON for the writeup.
-4. **Manual κ relabel** when 2026-05-24 unlock hits — samples are
-   already exported (run IDs `alr0r0p2` and `18xb5ob0`).
-5. **v1.1 design item**: make alpha co-trainable via custom SB3
-   policy. Out of scope; sweep `alpha_init` across runs.
-6. **v1.1 design item**: ACT-encoder feature-extractor hook for the
-   residual MLP input. Currently residual conditions on privileged
-   sim state (agent_pos + cube_state); ACT encoder features would
-   make the residual sim-to-real portable.
-7. **Optional**: visual / dynamic perturbation axes. Deferred.
+1. **Regenerate the Phase 4 ablation JSON** once the patched
+   aggregator is verified live (the user's first attempt ran the
+   pre-patch code; `git log` confirms commit `4b04377` is in but
+   the run that produced `docs/figures/phase4_ablation.json` was
+   from the old path). Same command as in the writeup; ~5 sec.
+2. **Render the Phase 4 failure-distribution figure** (one PNG).
+   Command + cell labels are in `docs/phase4_ablation.md`. ~30 sec.
+3. **Manual κ relabel** when 2026-05-24 unlocks — samples already
+   exported (`alr0r0p2`, `18xb5ob0`). Closes G3.
+
+Phase 5 design starts immediately after:
+
+- **Plotly/Dash dashboard** (PRD §9): filter by policy / metric /
+  failure mode; <3 s load; mobile-responsive. The persisted
+  `eval_results_<id>.json` schema is the natural data source.
+- **90-second demo video**: narrated; failure modes visually
+  annotated; 1080p min. Use a successful nominal rollout + a +5 cm
+  Recovery rollout side-by-side, then overlay the residual's
+  composed action vs the base.
+- **Blog post / arXiv-style writeup**: builds on
+  `docs/phase4_ablation.md` + the Phase 3 cross-axis findings in
+  `docs/research-log.md`. Honest null framing is the hook.
+
+v1.1 design backlog (deferred from Phase 4):
+
+- **Co-trainable α** via custom SB3 policy class. Top priority —
+  lower-bounds residual to "no harm".
+- **Distillation-init residual**: zero output-layer bias and shrink
+  weights so PPO starts from "do nothing". 1-line change in
+  `ResidualMLP.__init__`.
+- **ACT-encoder features** via the existing `feature_extractor`
+  slot; would make the residual sim-to-real portable.
+- **Smaller perturbation cells** (+1, +3 cm) where the base has
+  more headroom for an additive correction.
+- **Visual / dynamic perturbation axes** — wrappers stubbed.
 
 ## Handoff conventions (preserve across compaction)
 
