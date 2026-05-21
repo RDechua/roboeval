@@ -225,3 +225,65 @@ def test_failure_stack_axis_labels_present() -> None:
 def test_failure_stack_unknown_cell_raises() -> None:
     with pytest.raises(ValueError, match="unknown cell"):
         build_failure_stack(_make_data(), cell_id="not-a-cell")
+
+
+from roboeval.dashboard.figures import build_phase4_ablation  # noqa: E402
+from roboeval.dashboard.models import AblationCondition, WelchT  # noqa: E402
+
+
+def _make_ablation_data() -> DashboardData:
+    cells = _make_cells()
+    a = AblationCondition(
+        condition_id="A",
+        label="Frozen base only",
+        mean_tsr_custom=0.32,
+        std_tsr_custom=0.059,
+        per_seed_means=(0.26, 0.4, 0.3),
+        bootstrap_ci=(0.26, 0.4),
+        failure_counts=FailureCounts(48, 1, 1, 89, 0, 0, 0, 11),
+        run_id="w6k2wole",
+    )
+    b = AblationCondition(
+        condition_id="B",
+        label="Residual RL, sparse",
+        mean_tsr_custom=0.187,
+        std_tsr_custom=0.025,
+        per_seed_means=(0.22, 0.18, 0.16),
+        bootstrap_ci=(0.16, 0.22),
+        failure_counts=FailureCounts(28, 1, 8, 106, 0, 0, 0, 7),
+        run_id="o6ukyo53",
+    )
+    c = AblationCondition(
+        condition_id="C",
+        label="Residual RL, shaped",
+        mean_tsr_custom=0.213,
+        std_tsr_custom=0.050,
+        per_seed_means=(0.28, 0.2, 0.16),
+        bootstrap_ci=(0.16, 0.28),
+        failure_counts=FailureCounts(32, 0, 4, 109, 0, 0, 0, 5),
+        run_id="43czuigy",
+    )
+    return DashboardData(
+        cells=cells,
+        ablation=(a, b, c),
+        welch_tests=(
+            WelchT("B", -2.95, 2.7, 0.034),
+            WelchT("C", -1.95, 3.9, 0.062),
+        ),
+        schema_version=1,
+        generated_at="2026-05-21T00:00:00Z",
+    )
+
+
+def test_phase4_ablation_has_three_x_categories() -> None:
+    fig = build_phase4_ablation(_make_ablation_data())
+    for tr in fig.data:
+        assert list(tr.x) == ["A", "B", "C"]
+
+
+def test_phase4_ablation_title_mentions_plus_5cm() -> None:
+    fig = build_phase4_ablation(_make_ablation_data())
+    assert fig.layout.title is not None
+    title = fig.layout.title.text
+    assert title is not None
+    assert "+5" in title or "+5cm" in title
