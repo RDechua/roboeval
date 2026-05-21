@@ -34,7 +34,9 @@ jobs:
                       "torch>=2.0"
           pip install "ruff>=0.5,<0.6" "mypy>=1.10" "pytest>=8.0" \
                       "numpy>=1.26" "gymnasium>=0.29" "omegaconf>=2.3" \
-                      "pyyaml>=6.0" "wandb>=0.16"
+                      "pyyaml>=6.0" "wandb>=0.16" \
+                      "plotly>=5.20" "dash>=2.17" \
+                      "dash-bootstrap-components>=1.5"
 
       - name: Ruff lint
         run: ruff check .
