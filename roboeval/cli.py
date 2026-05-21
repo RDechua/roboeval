@@ -901,6 +901,54 @@ def _cmd_residual_aggregate(
     return 0
 
 
+def _cmd_dashboard_build() -> int:
+    """Validate that all dashboard data sources load cleanly.
+
+    Returns:
+        ``0`` if :func:`roboeval.dashboard.data.load_all` succeeds; the
+        non-zero exit codes come from Python's own exception path.
+    """
+    from pathlib import Path as _Path
+
+    from roboeval.dashboard.data import load_all
+
+    repo_root = _Path(__file__).resolve().parents[1]
+    data = load_all(repo_root=repo_root)
+    print(
+        f"[roboeval dashboard build] OK -- "
+        f"{len(data.cells)} cells, "
+        f"{len(data.ablation)} ablation conditions, "
+        f"{len(data.welch_tests)} Welch's t tests."
+    )
+    return 0
+
+
+def _cmd_dashboard_run(*, host: str, port: int, dry_run: bool) -> int:
+    """Launch the Dash development server (or dry-run construct the app).
+
+    Args:
+        host: Bind interface.
+        port: TCP port.
+        dry_run: When ``True``, import the app module but do not start
+            the server. Used by tests and by ``dashboard build``-style
+            CI gates that want to verify the app constructs without
+            tying up a port.
+    """
+    import importlib
+    import sys
+    from pathlib import Path as _Path
+
+    app_dir = _Path(__file__).resolve().parents[1] / "analysis" / "dashboard"
+    if str(app_dir) not in sys.path:
+        sys.path.insert(0, str(app_dir))
+    mod = importlib.import_module("app")
+    if dry_run:
+        print("[roboeval dashboard run] OK -- app constructs cleanly (dry-run).")
+        return 0
+    mod.app.run(host=host, port=port, debug=False)
+    return 0
+
+
 def _build_parser() -> argparse.ArgumentParser:
     """Build the top-level argument parser.
 
@@ -1038,6 +1086,44 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Optional path to write the JSON-serialised report to.",
     )
 
+    dashboard = subparsers.add_parser(
+        "dashboard",
+        help=(
+            "Phase 5 interactive dashboard: validate data sources, "
+            "or launch the Dash dev server."
+        ),
+    )
+    dashboard_sub = dashboard.add_subparsers(dest="dashboard_cmd", required=True)
+
+    dashboard_sub.add_parser(
+        "build",
+        help=(
+            "Validate that all dashboard data sources load cleanly. "
+            "Exits 0 on success, non-zero on schema or file errors."
+        ),
+    )
+
+    dashboard_run = dashboard_sub.add_parser(
+        "run",
+        help="Launch the Dash development server on http://localhost:8050.",
+    )
+    dashboard_run.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="Host interface to bind (default: 127.0.0.1).",
+    )
+    dashboard_run.add_argument(
+        "--port",
+        type=int,
+        default=8050,
+        help="Port to bind (default: 8050).",
+    )
+    dashboard_run.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Validate the app constructs without starting the server.",
+    )
+
     return parser
 
 
@@ -1085,5 +1171,15 @@ def main(argv: Sequence[str] | None = None) -> int:
                 output_path=(None if args.output is None else str(args.output)),
             )
         raise AssertionError(f"unhandled residual_cmd: {args.residual_cmd!r}")
+    if args.command == "dashboard":
+        if args.dashboard_cmd == "build":
+            return _cmd_dashboard_build()
+        if args.dashboard_cmd == "run":
+            return _cmd_dashboard_run(
+                host=str(args.host),
+                port=int(args.port),
+                dry_run=bool(args.dry_run),
+            )
+        raise AssertionError(f"unhandled dashboard_cmd: {args.dashboard_cmd!r}")
     # Unreachable: subparsers(required=True) enforces a known command.
     raise AssertionError(f"unhandled command: {args.command!r}")
