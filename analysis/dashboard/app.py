@@ -19,8 +19,7 @@ from pathlib import Path
 from typing import Any
 
 import dash_bootstrap_components as dbc
-from dash import Dash, html
-from dash import dcc as dcc
+from dash import Dash, Input, Output, State, dcc, html
 
 from roboeval.dashboard.data import load_all
 from roboeval.dashboard.figures import (
@@ -239,3 +238,36 @@ app = Dash(__name__, external_stylesheets=[dbc.themes.LITERA])
 app.title = "RoboEval — Phase 5 dashboard"
 app.layout = _build_layout()
 server = app.server
+
+
+@app.callback(
+    Output("hero-curve", "figure"),
+    Input("axis-filter", "value"),
+    Input("metric-toggle", "value"),
+    State("data-store", "data"),
+)
+def update_hero(axis: str, metric: str, data: dict[str, Any]) -> dict[str, Any]:
+    """Re-render the hero degradation curve on filter change."""
+    parsed = _store_dict_to_data(data)
+    fig = build_degradation_curve(
+        parsed,
+        metric=metric,  # type: ignore[arg-type]
+        axis_filter=axis,  # type: ignore[arg-type]
+    )
+    return fig.to_dict()  # type: ignore[no-any-return]
+
+
+@app.callback(
+    Output("failure-stack", "figure"),
+    Input("cell-select", "value"),
+    State("data-store", "data"),
+)
+def update_failure_stack(cell_id: str, data: dict[str, Any]) -> dict[str, Any]:
+    """Re-render the failure-mode stacked bar on cell change."""
+    parsed = _store_dict_to_data(data)
+    fig = build_failure_stack(parsed, cell_id=cell_id)
+    return fig.to_dict()  # type: ignore[no-any-return]
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8050, debug=False)
