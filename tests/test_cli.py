@@ -255,3 +255,23 @@ def test_residual_aggregate_missing_file_errors(tmp_path: Path) -> None:
 
     exit_code = main(["residual", "aggregate", str(tmp_path / "does_not_exist.json")])
     assert exit_code == 1
+
+
+def test_dashboard_build_subcommand_zero_exit_on_valid_data(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """`roboeval dashboard build` validates data loaders and exits 0."""
+    from roboeval.cli import main
+
+    exit_code = main(["dashboard", "build"])
+    out = capsys.readouterr().out
+    assert exit_code == 0
+    assert "10" in out
+
+
+def test_dashboard_run_subcommand_dry_run_zero_exit() -> None:
+    """`dashboard run --dry-run` constructs the app but does not start the server."""
+    from roboeval.cli import main
+
+    exit_code = main(["dashboard", "run", "--dry-run"])
+    assert exit_code == 0
