@@ -10,8 +10,13 @@ welcome (it's a snapshot, not a journal).
 **Phase 4 closed**: residual RL ablation complete at +5 cm cell;
 honest null result documented in `docs/phase4_ablation.md`. Gates
 G1, G2, G4 closed. G3 carries the κ-relabel waiting on the 2026-05-24
-unlock; otherwise robustness work complete. **Next up: Phase 5
-(Communication) — dashboard, demo video, blog post.**
+unlock; otherwise robustness work complete.
+
+**Phase 5 (Communication) in progress**: interactive Plotly/Dash
+dashboard landed (`roboeval/dashboard/` + `analysis/dashboard/`),
+narrative single-page hero curves + per-cell failure breakdown +
+Phase 4 ablation. Deploys to HF Spaces via `analysis/dashboard/Dockerfile`.
+Demo video and arXiv-style writeup remain.
 
 Cross-phase finding still standing: ACT's failure mode is
 policy-architecture-specific (both spatial and temporal axes produce
@@ -239,31 +244,39 @@ docs/phase4_ablation.md                         # PRD §8.3 G4 writeup
 
 ## Next session intent
 
-Phase 4 closed. Transition to **Phase 5 (Communication, Week 8)**
-with two small wrap-up items first:
+Phase 5 dashboard landed. Remaining Phase 5 work:
 
-1. **Regenerate the Phase 4 ablation JSON** once the patched
-   aggregator is verified live (the user's first attempt ran the
-   pre-patch code; `git log` confirms commit `4b04377` is in but
-   the run that produced `docs/figures/phase4_ablation.json` was
-   from the old path). Same command as in the writeup; ~5 sec.
-2. **Render the Phase 4 failure-distribution figure** (one PNG).
-   Command + cell labels are in `docs/phase4_ablation.md`. ~30 sec.
-3. **Manual κ relabel** when 2026-05-24 unlocks — samples already
-   exported (`alr0r0p2`, `18xb5ob0`). Closes G3.
+1. **Deploy the dashboard to HF Spaces** — manual one-time push of
+   `analysis/dashboard/` + tracked data to `huggingface.co/spaces/
+   RubenoDechua/roboeval`. Dockerfile is ready; first build verifies
+   the <3 s warm load. Steps in
+   `docs/superpowers/plans/2026-05-21-phase5-dashboard.md` Task 12 Step 6.
+2. **90-second demo video** — narrated; failure modes visually
+   annotated; 1080p min. Use a successful nominal rollout + a +5 cm
+   Recovery rollout side-by-side, then overlay the residual's
+   composed action vs the base.
+3. **Blog post / arXiv-style writeup** — builds on
+   `docs/phase4_ablation.md` + the Phase 3 cross-axis findings in
+   `docs/research-log.md`. Honest-null framing is the hook.
+4. **MkDocs site** — static-site wrapper around PRD, research-log,
+   phase4_ablation.md, plus auto-generated API docs.
+5. **κ relabel** when 2026-05-24 unlocks — samples already exported
+   (`alr0r0p2`, `18xb5ob0`). Closes G3.
 
-Phase 5 design starts immediately after:
+Dashboard implementation notes:
 
-- **Plotly/Dash dashboard** (PRD §9): filter by policy / metric /
-  failure mode; <3 s load; mobile-responsive. The persisted
-  `eval_results_<id>.json` schema is the natural data source.
-- **90-second demo video**: narrated; failure modes visually
-  annotated; 1080p min. Use a successful nominal rollout + a +5 cm
-  Recovery rollout side-by-side, then overlay the residual's
-  composed action vs the base.
-- **Blog post / arXiv-style writeup**: builds on
-  `docs/phase4_ablation.md` + the Phase 3 cross-axis findings in
-  `docs/research-log.md`. Honest null framing is the hook.
+- Pure logic under `roboeval/dashboard/` (mypy --strict,
+  unit-tested in `tests/dashboard/`); Dash skeleton in
+  `analysis/dashboard/app.py`.
+- Single committed `data/headline.json` is the runtime source of
+  truth for 10 Phase 3 cells; built by
+  `scripts/build_headline_json.py` from gitignored auto_labels
+  + STATE.md headline tables.
+- Two CLI surfaces: `roboeval dashboard build` (CI data-gate) and
+  `roboeval dashboard run` (local dev server on :8050).
+- HF Spaces uses the Docker SDK; container CMD runs gunicorn on
+  port 7860. First visit on a cold container is ~30 s; warm
+  loads are <3 s per PRD §9.1.
 
 v1.1 design backlog (deferred from Phase 4):
 
