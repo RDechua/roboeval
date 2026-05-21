@@ -142,3 +142,60 @@ def build_degradation_curve(
         height=420,
     )
     return fig
+
+
+_FAILURE_MODE_ORDER: tuple[tuple[str, str, str], ...] = (
+    # (key, display name, color)
+    ("success", "Success", "#2CA02C"),
+    ("grasp_failure", "Grasp", "#D62728"),
+    ("approach_failure", "Approach", "#FF7F0E"),
+    ("recovery_failure", "Recovery", "#1F77B4"),
+    ("action_oscillation", "Oscillation", "#9467BD"),
+    ("timeout", "Timeout", "#8C564B"),
+    ("visual_confusion", "Visual confusion", "#E377C2"),
+    ("needs_review", "Needs review", "#7F7F7F"),
+)
+
+
+def build_failure_stack(
+    data: DashboardData,
+    *,
+    cell_id: str,
+) -> go.Figure:
+    """Stacked bar of failure-mode fractions for one perturbation cell."""
+    cell = next((c for c in data.cells if c.cell_id == cell_id), None)
+    if cell is None:
+        raise ValueError(f"unknown cell {cell_id!r}")
+    fractions = cell.failure_counts.as_fractions()
+
+    fig = go.Figure()
+    for key, display, color in _FAILURE_MODE_ORDER:
+        value_pct = fractions[key] * 100.0
+        rollout_count = int(round(value_pct * cell.n_rollouts / 100))
+        fig.add_trace(
+            go.Bar(
+                x=[cell.cell_id],
+                y=[value_pct],
+                name=display,
+                marker_color=color,
+                hovertemplate=(
+                    f"{display}: %{{y:.1f}}% "
+                    f"({rollout_count} rollouts)<extra></extra>"
+                ),
+            )
+        )
+    fig.update_layout(
+        barmode="stack",
+        title=(
+            f"Failure-mode breakdown — {cell.cell_id} "
+            f"({cell.n_rollouts} rollouts, 3 seeds)"
+        ),
+        template="plotly_white",
+        yaxis_title="Fraction of rollouts (%)",
+        xaxis_title="Cell",
+        margin={"l": 60, "r": 30, "t": 70, "b": 60},
+        height=380,
+        legend={"orientation": "v", "yanchor": "middle", "y": 0.5, "x": 1.02},
+    )
+    fig.update_yaxes(range=[0, 100])
+    return fig

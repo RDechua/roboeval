@@ -198,3 +198,30 @@ def test_degradation_curve_metric_toggle_changes_y_title() -> None:
         _make_data(), metric="mean_tsr", axis_filter="both"
     )
     assert fig_custom.layout.yaxis.title.text != fig_env.layout.yaxis.title.text
+
+
+from roboeval.dashboard.figures import build_failure_stack  # noqa: E402
+
+
+def test_failure_stack_has_named_failure_categories() -> None:
+    data = _make_data()
+    fig = build_failure_stack(data, cell_id="y+5cm")
+    trace_names = {tr.name for tr in fig.data}
+    assert "Success" in trace_names
+    assert "Recovery" in trace_names
+
+
+def test_failure_stack_axis_labels_present() -> None:
+    fig = build_failure_stack(_make_data(), cell_id="y-5cm")
+    assert fig.layout.yaxis.title.text is not None
+    assert "%" in fig.layout.yaxis.title.text or "fraction" in (
+        fig.layout.yaxis.title.text.lower()
+    )
+    assert fig.layout.title is not None
+    assert fig.layout.title.text is not None
+    assert "y-5cm" in fig.layout.title.text
+
+
+def test_failure_stack_unknown_cell_raises() -> None:
+    with pytest.raises(ValueError, match="unknown cell"):
+        build_failure_stack(_make_data(), cell_id="not-a-cell")
