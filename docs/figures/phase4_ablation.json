@@ -1,0 +1,83 @@
+{
+  "schema_version": 2,
+  "target_perturbation": {
+    "kind": "spatial",
+    "dx_m": 0.0,
+    "dy_m": 0.05
+  },
+  "conditions": [
+    {
+      "condition_id": "A",
+      "label": "Frozen base only",
+      "n_runs": 1,
+      "n_rollouts": 150,
+      "per_seed_means": [
+        0.26,
+        0.4,
+        0.3
+      ],
+      "mean": 0.32,
+      "std": 0.058878405775518984,
+      "bootstrap_ci_low": 0.26,
+      "bootstrap_ci_high": 0.4000000000000001,
+      "run_ids": [
+        "w6k2wole"
+      ]
+    },
+    {
+      "condition_id": "B",
+      "label": "Residual RL, sparse reward",
+      "n_runs": 1,
+      "n_rollouts": 150,
+      "per_seed_means": [
+        0.22,
+        0.18,
+        0.16
+      ],
+      "mean": 0.18666666666666668,
+      "std": 0.024944382578492942,
+      "bootstrap_ci_low": 0.16,
+      "bootstrap_ci_high": 0.22,
+      "run_ids": [
+        "o6ukyo53"
+      ]
+    },
+    {
+      "condition_id": "C",
+      "label": "Residual RL, shaped reward",
+      "n_runs": 1,
+      "n_rollouts": 150,
+      "per_seed_means": [
+        0.28,
+        0.2,
+        0.16
+      ],
+      "mean": 0.21333333333333335,
+      "std": 0.0498887651569859,
+      "bootstrap_ci_low": 0.16,
+      "bootstrap_ci_high": 0.28,
+      "run_ids": [
+        "43czuigy"
+      ]
+    }
+  ],
+  "comparisons": [
+    {
+      "condition_id": "B",
+      "delta_tsr": -0.13333333333333333,
+      "t_statistic": -2.948839123097942,
+      "df": 2.695541401273885,
+      "p_value": 0.9657149283212578,
+      "significant_at_05": false
+    },
+    {
+      "condition_id": "C",
+      "delta_tsr": -0.10666666666666666,
+      "t_statistic": -1.9547111097008831,
+      "df": 3.8950108459869845,
+      "p_value": 0.9378981410804068,
+      "significant_at_05": false
+    }
+  ],
+  "warnings": []
+}
