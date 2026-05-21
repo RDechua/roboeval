@@ -199,3 +199,33 @@ def build_failure_stack(
     )
     fig.update_yaxes(range=[0, 100])
     return fig
+
+
+def build_phase4_ablation(data: DashboardData) -> go.Figure:
+    """Stacked bar comparing failure-mode distribution across A/B/C at +5 cm."""
+    if not data.ablation:
+        raise ValueError("DashboardData has no ablation conditions")
+    fig = go.Figure()
+    x = [c.condition_id for c in data.ablation]
+    for key, display, color in _FAILURE_MODE_ORDER:
+        ys = [c.failure_counts.as_fractions()[key] * 100.0 for c in data.ablation]
+        fig.add_trace(
+            go.Bar(
+                x=x,
+                y=ys,
+                name=display,
+                marker_color=color,
+            )
+        )
+    fig.update_layout(
+        barmode="stack",
+        title="Phase 4 ablation — failure-mode distribution at +5cm spatial",
+        template="plotly_white",
+        yaxis_title="Fraction of rollouts (%)",
+        xaxis_title="Condition (A=base, B=sparse, C=shaped)",
+        margin={"l": 60, "r": 30, "t": 70, "b": 60},
+        height=380,
+        legend={"orientation": "v", "yanchor": "middle", "y": 0.5, "x": 1.02},
+    )
+    fig.update_yaxes(range=[0, 100])
+    return fig
