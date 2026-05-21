@@ -34,3 +34,21 @@ def test_app_layout_has_hero_curve_and_failure_stack() -> None:
     assert "hero-curve" in layout_html
     assert "failure-stack" in layout_html
     assert "ablation-plot" in layout_html
+
+
+def test_update_hero_callback_round_trip() -> None:
+    mod = _load_app_module()
+    fig_dict = mod.update_hero(
+        axis="spatial",
+        metric="mean_tsr_custom",
+        data=mod._STORE_PAYLOAD,
+    )
+    assert "data" in fig_dict
+    assert "layout" in fig_dict
+
+
+def test_update_failure_stack_callback_changes_with_cell() -> None:
+    mod = _load_app_module()
+    a = mod.update_failure_stack(cell_id="y+5cm", data=mod._STORE_PAYLOAD)
+    b = mod.update_failure_stack(cell_id="y-5cm", data=mod._STORE_PAYLOAD)
+    assert a["layout"]["title"]["text"] != b["layout"]["title"]["text"]
