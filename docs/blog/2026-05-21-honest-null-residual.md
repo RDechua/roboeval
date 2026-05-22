@@ -3,7 +3,16 @@
 <!-- 2026-05-21 · Rubeno Dechua · ~2000 words ·
      Repo: https://github.com/RubenoDechua/roboeval -->
 
-<!-- §1 Lede goes here -->
+<!-- §1 Lede -->
+
+I spent a month testing how a state-of-the-art imitation learning policy
+breaks when you nudge the world. The single biggest failure mode was
+**Recovery** — the policy sweeps past the cube without engaging — and at
++5 cm of spatial shift, it accounts for 59% of all rollouts. I built a
+residual RL loop on top of the frozen base policy to try to recover those
+rollouts. Across two reward shapings and three seeds per arm, the residual
+moved the task-success rate **−13.3 pp** under sparse reward and **−10.7 pp**
+under shaped. This is the writeup of why that happened and what I'd try next.
 
 <!-- §2 TL;DR box -->
 
