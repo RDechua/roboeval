@@ -16,6 +16,15 @@ under shaped. This is the writeup of why that happened and what I'd try next.
 
 <!-- §2 TL;DR box -->
 
+> **TL;DR.** Frozen ACT on the +5 cm spatial cell scored **0.320 mean TSR**
+> (3 seeds × 50 rollouts). A PPO residual on top of it scored **0.187**
+> with sparse reward (Δ = −13.3 pp; Welch t = −2.95, p_one-sided = 0.034
+> for *significant decrease*) and **0.213** with shaped reward (Δ = −10.7 pp;
+> t = −1.95, p = 0.062). The residual hurts under both reward shapings. The
+> failure mode is diagnosable: PPO drifts off zero with no positive bootstrap,
+> α is large enough to compound, and the MLP starts random. The v1.1 fix
+> path is concrete — see the end.
+
 ## Setup: ACT on AlohaTransferCube
 <!-- §3 -->
 
