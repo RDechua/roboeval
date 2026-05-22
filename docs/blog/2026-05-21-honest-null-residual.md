@@ -216,3 +216,45 @@ Three of those four levers have concrete v1.1 fixes. Below.
 
 ## What I'd try next (v1.1)
 <!-- §9 — closes with code/dashboard/docs links -->
+
+The diagnosis points at four concrete fixes, ordered by leverage:
+
+**Distillation-init residual** (top priority, smallest change). Zero the
+output-layer weights and bias of `ResidualMLP` and shrink the rest by 0.1
+at construction time. The policy now starts as "do nothing" — α · δ is
+~0 for the first thousands of PPO steps, so the base policy's performance
+is a strict lower bound. This is a one-line `nn.init.zeros_` change in
+`roboeval/residual/policy.py`. It directly addresses lever 4.
+
+**Co-trainable α.** Move α out of the YAML and into the residual policy
+as a `nn.Parameter` with a small initial value (0.01) and an `L2`
+penalty. PPO learns when to use the residual rather than always
+saturating it. This addresses lever 3 and pairs naturally with the
+distillation init — together they bound the residual's worst case to
+"no harm."
+
+**ACT-encoder features.** The current residual reads raw 14-DoF agent
+positions. Wire the residual's input through ACT's transformer encoder
+(via the `feature_extractor` slot the codebase already has) so it sees
+the same vision-conditioned representation the base does. This should
+make the residual sim-to-real portable and addresses lever 1 by sharing
+the base's perceptual prior.
+
+**Smaller perturbation cells.** Re-run the ablation at +1 cm and +3 cm
+where the base still has 72% and 55% TSR respectively. There's actual
+headroom there for an additive correction; if the residual *still* hurts
+in that regime, the architectural story above is wrong and we have
+something interesting to chase.
+
+The eval harness, the failure-mode classifier, the residual training
+loop, the aggregator, and the dashboard are all in place to run any of
+these in an afternoon. The code is at
+[github.com/RubenoDechua/roboeval](https://github.com/RubenoDechua/roboeval);
+the live dashboard is at
+[huggingface.co/spaces/RubenoDechua/roboeval](https://huggingface.co/spaces/RubenoDechua/roboeval).
+The PRD is in `docs/PRD.md`, the per-week research log is in
+`docs/research-log.md`, and the per-condition writeup (with the full
+Welch's t-test pipeline) is in `docs/phase4_ablation.md`.
+
+If you're hiring for evaluation engineering or residual RL and want to
+talk about this, my email is in the GitHub profile.
