@@ -58,6 +58,35 @@ underneath nearly every Robot Learning Engineer interview I've seen.
 ## Why +5 cm? What an evaluation harness told me
 <!-- §4 — embeds docs/figures/cross_axis_degradation.png -->
 
+Before reaching for residual RL, I built an evaluation harness with two
+perturbation axes. **Spatial:** translate the cube's initial XY pose by
+±1, ±3, ±5 cm. **Temporal:** delay the action chunk by 1, 3, or 5 env
+steps. Same base policy, same 150 rollouts per cell, same geometric
+success criterion. The story turned out to be asymmetric across axes:
+
+![Cross-axis degradation](../figures/cross_axis_degradation.png)
+
+*ACT's mean task-success rate vs perturbation magnitude. Left: spatial
+cube shifts in cm; 67 pp drop at -5 cm vs nominal. Right: action-chunk
+delays in env steps; only 11 pp drop at 5 steps. ±σ shaded across 3 seeds
+× 50 rollouts per cell.*
+
+**Spatial is brittle.** Pull the cube 5 cm in either direction and TSR
+collapses; the curve is nonlinear and asymmetric, with the negative
+direction degrading harder (12.7% at -5 cm versus 30.7% at +5 cm).
+**Temporal is robust.** A 5-step delay only costs 11 pp — ACT's 100-step
+action chunking absorbs latency that would wreck a stateless policy.
+
+The failure-mode classifier I ran on every rollout (PRD §7.2 taxonomy:
+Success / Grasp / Approach / Recovery / Oscillation / Timeout / Visual
+confusion) gave a clearer signal still: under both axes the dominant
+failure was **Recovery** — the gripper moves into roughly the right region
+and then sweeps through without engaging. At +5 cm spatial that single
+mode accounts for **59% of all rollouts**. One failure mode that the base
+policy reliably reproduces is the cleanest possible target for a residual
+correction; everywhere else on the perturbation grid the failures were
+multi-modal and harder to attack. So: +5 cm spatial.
+
 ## The hypothesis: a small additive residual
 <!-- §5 — embeds the mermaid diagram -->
 
