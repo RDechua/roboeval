@@ -266,8 +266,11 @@ Phase 5 dashboard landed. Remaining Phase 5 work:
    ~2090 words, honest-null framing, three figures (cross-axis curves,
    Phase 4 stacked bar, mermaid residual architecture). Linked from
    README. arXiv-style PDF cross-post deferred.
-4. **MkDocs site** — static-site wrapper around PRD, research-log,
-   phase4_ablation.md, plus auto-generated API docs.
+4. **MkDocs site landed** ✓ — live at https://rdechua.github.io/roboeval/.
+   Lean 4-tab nav (Home / Project / API / Blog), 7 mkdocstrings submodule
+   pages, auto-deploy via `.github/workflows/docs.yml` on push to main.
+   `mkdocs build --strict` enforced as a CI gate. Repo flipped to public
+   so GitHub Pages serves for free.
 5. **κ relabel** when 2026-05-24 unlocks — samples already exported
    (`alr0r0p2`, `18xb5ob0`). Closes G3.
 

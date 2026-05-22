@@ -2,6 +2,7 @@
 
 [![Live Demo](https://img.shields.io/badge/HF%20Spaces-Live%20Demo-blue?logo=huggingface)](https://huggingface.co/spaces/RubenoDechua/roboeval)
 [![Writeup](https://img.shields.io/badge/Blog-Honest%20null-blueviolet)](docs/blog/2026-05-21-honest-null-residual.md)
+[![Docs](https://img.shields.io/badge/Docs-mkdocs--material-526CFE?logo=materialformkdocs)](https://rdechua.github.io/roboeval/)
 
 > Open-source evaluation harness & failure-mode study for robot learning policies (ACT, Diffusion Policy) with residual RL fine-tuning.
 
