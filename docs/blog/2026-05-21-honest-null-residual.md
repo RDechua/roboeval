@@ -176,5 +176,43 @@ miscorrection, not noise. The next section asks why.
 ## Why it hurt: diagnosing the four levers
 <!-- §8 -->
 
+Residual RL on a frozen base policy has four design knobs: the base, the
+reward, the blend coefficient α, and the residual network's initialization.
+Reasoning through each:
+
+**The base.** ACT at +5 cm scored 30.7% — already in the long-tail regime
+where 59% of rollouts are Recovery. There isn't much *headroom* for a
+small additive correction here; the cube is far enough from the trained
+distribution that the base's joint targets are pointing at the wrong
+position to begin with. A small residual cannot fix a large pose error;
+it can only nudge a near-miss into a hit. **The base policy was probably
+too broken at this cell for a same-architecture additive fix.**
+
+**The reward.** The sparse reward is +1 only on the success criterion
+firing — and at this cell, only 19% of *the residual's own training
+rollouts* fired the criterion. That's a sparse-reward dead zone:
+PPO's advantage estimates are dominated by terminal value, the policy
+gradient is mostly noise, and the entropy bonus drifts the mean
+nonzero. The shaped reward was supposed to fix that, and it does narrow
+the gap (−10.7 pp vs. −13.3 pp), but not close it. **Reward shaping
+helped a little; it didn't get over the hump.**
+
+**Alpha.** α=0.05 × σ=0.135 gives a per-dim perturbation of about ±0.007.
+That's small per step but compounds: ACT runs ~385 steps to success and
+the residual integrates an action perturbation every one of them. If
+PPO's mean has drifted by even 0.05 of a standard deviation in a
+*consistent direction*, the gripper accumulates several centimeters of
+trajectory error before the episode ends. The Approach-failure jump under
+sparse reward is exactly what this looks like geometrically.
+
+**The init.** The residual MLP starts with default He-uniform weights and
+a learnable log-σ initialized at -2 (per SB3 defaults). At t=0 the
+network's output is small-but-random, not zero. PPO has to learn "do
+nothing" from scratch, in a sparse-reward regime, which is harder than
+learning a correction. **The residual never gets to "no harm" as a
+lower bound** — and "no harm" is what α should buy us in principle.
+
+Three of those four levers have concrete v1.1 fixes. Below.
+
 ## What I'd try next (v1.1)
 <!-- §9 — closes with code/dashboard/docs links -->
