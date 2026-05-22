@@ -142,6 +142,37 @@ interactively.
 ## Result: the residual hurt the base
 <!-- §7 — embeds docs/figures/phase4_ablation_failure_distribution.png -->
 
+The headline numbers (mean ± std across 3 seed groups, n=50 each):
+
+| Arm | Mean TSR | Δ vs A | Welch's t | p (one-sided, residual > A) |
+|---|---|---|---|---|
+| A — frozen base | 0.320 ± 0.059 | — | — | — |
+| B — residual, sparse | 0.187 ± 0.025 | **−13.3 pp** | −2.95 | 0.966 |
+| C — residual, shaped | 0.213 ± 0.050 | **−10.7 pp** | −1.95 | 0.938 |
+
+Both residual arms fall below the base. The one-sided p-values are large
+because the alternative was "the residual helps"; flip the direction and
+the residual's negative effect is significant at p ≈ 0.03 for sparse and
+borderline (p ≈ 0.06) for shaped. The per-seed spread is tight (0.025 for
+sparse) — this is real signal, not noise across runs.
+
+The failure-mode distribution is the more informative half of the result:
+
+![Failure modes at +5 cm](../figures/phase4_ablation_failure_distribution.png)
+
+*Failure-mode distribution at +5 cm spatial. The residual under both
+reward shapings shrinks the success bucket and grows Recovery; Approach
+failures jump 7× under sparse reward. 150 rollouts per condition,
+3 seeds × 50.*
+
+Three qualitative shifts stand out. **Success** collapses from 30.7%
+(base) to 18.7% (sparse) / 21.3% (shaped). **Recovery** grows from 59.3%
+to 70.7% / 73.3% — the residual is making the dominant failure *more*
+dominant. And **Approach failures** jump from 0.7% (base) to 5.3%
+(sparse) — a 7× increase. The residual is not just adding jitter; it is
+occasionally yanking the gripper away from the cube. That's a directional
+miscorrection, not noise. The next section asks why.
+
 ## Why it hurt: diagnosing the four levers
 <!-- §8 -->
 
