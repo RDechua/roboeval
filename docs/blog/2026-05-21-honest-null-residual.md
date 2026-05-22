@@ -90,6 +90,33 @@ multi-modal and harder to attack. So: +5 cm spatial.
 ## The hypothesis: a small additive residual
 <!-- §5 — embeds the mermaid diagram -->
 
+```mermaid
+flowchart LR
+    O[observation o_t] --> ACT[Frozen ACT base]
+    O --> R[Residual MLP δ_θ(o_t)]
+    ACT --> S[a_base]
+    R --> SCALE[× α = 0.05]
+    S --> SUM((+))
+    SCALE --> SUM
+    SUM --> A[a_t = a_base + α · δ_θ]
+```
+
+*Per-step composition: ACT's frozen action plus an MLP residual scaled
+by α = 0.05. PPO learns δ_θ to maximize the reward.*
+
+The architecture is small on purpose. The residual is a two-layer GELU MLP
+(256 → 256) emitting a 6-d correction in joint-target space, scaled by
+α=0.05. With ACT's per-dim action std around σ=0.135, that bounds the
+residual's per-step perturbation at roughly ±0.007 — small enough, I
+thought, that it would either help or do nothing.
+
+I ran two reward shapings as a paired ablation. **Sparse:** +1 on the
+geometric success criterion firing, 0 otherwise. **Shaped:** sparse plus a
+distance-shaping term `-w · ‖cube_xy - target_xy‖₂` with `w = 1.0`,
+matching the PRD §8 design. The intent was to check whether sparse reward
+was the limiting factor; the alternative hypothesis was that the residual
+just lacks signal.
+
 ## The experiment
 <!-- §6 -->
 
