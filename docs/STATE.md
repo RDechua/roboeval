@@ -18,6 +18,13 @@ narrative single-page hero curves + per-cell failure breakdown +
 Phase 4 ablation. Deploys to HF Spaces via `analysis/dashboard/Dockerfile`.
 Demo video and arXiv-style writeup remain.
 
+`data/headline.json` is schema v2 — self-contained (cells + ablation +
+Welch's t blocks inline). Runtime reads one tracked file; gitignored
+auto_labels / eval_results are touched only at build time by
+`scripts/build_headline_json.py`. See
+`docs/superpowers/specs/2026-05-21-phase5-dashboard-design.md` for the
+schema-v1→v2 amendment.
+
 Cross-phase finding still standing: ACT's failure mode is
 policy-architecture-specific (both spatial and temporal axes produce
 Recovery), but elasticity differs 4-6× (spatial brittle, temporal

@@ -1,6 +1,8 @@
 # Phase 5 — Interactive Dashboard (Design)
 
-**Status:** in review 2026-05-21 · **Owner:** Rubeno Dechua · **Targets:** PRD §9 (Interactive Dashboard deliverable), PRD §9.1 (quality checklist), PRD §5.3 (`analysis/` layout).
+**Status:** implemented 2026-05-21 · **Owner:** Rubeno Dechua · **Targets:** PRD §9 (Interactive Dashboard deliverable), PRD §9.1 (quality checklist), PRD §5.3 (`analysis/` layout).
+
+**Update 2026-05-21 (post-implementation):** `data/headline.json` was bumped from schema v1 to v2 to make it self-contained. The original design had the runtime dashboard read from `data/headline.json` + `docs/figures/phase4_ablation.json` + 3 `outputs/.../eval_results_*.json` + 3 `data/taxonomy/auto_labels_*.json`. The latter two paths are gitignored, so the tests failed in CI even though they passed locally. Schema v2 bakes the Phase 4 ablation block (per-condition stats, per-seed means, bootstrap CI, failure counts) and the Welch's t-tests into `data/headline.json` at *build* time. The runtime now reads exactly one tracked file. Build script: `scripts/build_headline_json.py`. Runtime loader: `roboeval.dashboard.data.load_dashboard_data`.
 
 ## 1. Goal
 
