@@ -255,7 +255,7 @@ Phase 5 dashboard landed. Remaining Phase 5 work:
 
 1. **Deploy the dashboard to HF Spaces** — manual one-time push of
    `analysis/dashboard/` + tracked data to `huggingface.co/spaces/
-   RubenoDechua/roboeval`. Dockerfile is ready; first build verifies
+   rubenodechua/roboeval`. Dockerfile is ready; first build verifies
    the <3 s warm load. Steps in
    `docs/superpowers/plans/2026-05-21-phase5-dashboard.md` Task 12 Step 6.
 2. **90-second demo video** — narrated; failure modes visually
