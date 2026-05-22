@@ -150,11 +150,10 @@ The headline numbers (mean ± std across 3 seed groups, n=50 each):
 | B — residual, sparse | 0.187 ± 0.025 | **−13.3 pp** | −2.95 | 0.966 |
 | C — residual, shaped | 0.213 ± 0.050 | **−10.7 pp** | −1.95 | 0.938 |
 
-Both residual arms fall below the base. The one-sided p-values are large
-because the alternative was "the residual helps"; flip the direction and
-the residual's negative effect is significant at p ≈ 0.03 for sparse and
-borderline (p ≈ 0.06) for shaped. The per-seed spread is tight (0.025 for
-sparse) — this is real signal, not noise across runs.
+Both residual arms fall below the base. The one-sided p-values above
+test "the residual helps"; flip the alternative and the negative effect
+is significant at p ≈ 0.03 (sparse), borderline at p ≈ 0.06 (shaped).
+Per-seed spread is tight (0.025 sparse) — this is signal, not noise.
 
 The failure-mode distribution is the more informative half of the result:
 
@@ -214,6 +213,17 @@ lower bound** — and "no harm" is what α should buy us in principle.
 
 Three of those four levers have concrete v1.1 fixes. Below.
 
+### Limitations
+
+Three honest caveats. **(1) Single base policy.** I evaluated only ACT;
+diffusion-policy results may differ both quantitatively and in failure
+morphology. **(2) Single cell.** The ablation ran at +5 cm spatial only.
+The architectural fixes above need re-running at +1 and +3 cm where the
+base has more headroom before we can claim they generalise. **(3) Small
+N.** 3 seeds × 50 rollouts per arm is enough for the qualitative story
+but the Welch's t p-values are wide because df ≈ 3; a follow-up should
+run 5+ seed groups to tighten the confidence intervals.
+
 ## What I'd try next (v1.1)
 <!-- §9 — closes with code/dashboard/docs links -->
 
@@ -246,15 +256,12 @@ headroom there for an additive correction; if the residual *still* hurts
 in that regime, the architectural story above is wrong and we have
 something interesting to chase.
 
-The eval harness, the failure-mode classifier, the residual training
-loop, the aggregator, and the dashboard are all in place to run any of
-these in an afternoon. The code is at
-[github.com/RubenoDechua/roboeval](https://github.com/RubenoDechua/roboeval);
-the live dashboard is at
+The eval harness, classifier, training loop, aggregator, and dashboard are
+all in place to run any of these in an afternoon. Repo:
+[github.com/RubenoDechua/roboeval](https://github.com/RubenoDechua/roboeval)
+(PRD, week-by-week log, and the full Phase 4 writeup are under `docs/`).
+Live dashboard:
 [huggingface.co/spaces/RubenoDechua/roboeval](https://huggingface.co/spaces/RubenoDechua/roboeval).
-The PRD is in `docs/PRD.md`, the per-week research log is in
-`docs/research-log.md`, and the per-condition writeup (with the full
-Welch's t-test pipeline) is in `docs/phase4_ablation.md`.
 
-If you're hiring for evaluation engineering or residual RL and want to
-talk about this, my email is in the GitHub profile.
+If you're hiring for evaluation engineering or residual RL, my email is
+in the GitHub profile.
