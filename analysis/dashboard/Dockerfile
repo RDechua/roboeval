@@ -24,8 +24,12 @@ COPY analysis/dashboard /app/analysis/dashboard
 COPY data/headline.json /app/data/headline.json
 
 RUN pip install --upgrade pip \
- && pip install -e . \
+ && pip install --no-deps -e . \
  && pip install -r analysis/dashboard/requirements.txt
+# `--no-deps` skips the full pyproject ML stack (lerobot, mujoco, torch,
+# sb3, etc.) — none of which the dashboard imports at runtime. The
+# `roboeval.dashboard` subpackage only needs plotly + dash + dbc, which
+# requirements.txt installs explicitly.
 
 ENV PYTHONPATH=/app
 
