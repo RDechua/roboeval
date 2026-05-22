@@ -8,7 +8,6 @@ No network I/O, no Dash imports — these run cleanly under
 
 from __future__ import annotations
 
-import datetime as _dt
 import json
 from pathlib import Path
 from typing import Literal, cast
@@ -21,7 +20,7 @@ from roboeval.dashboard.models import (
     WelchT,
 )
 
-_HEADLINE_SCHEMA_VERSION = 1
+_HEADLINE_SCHEMA_VERSIONS_SUPPORTED: frozenset[int] = frozenset({1, 2})
 _ABLATION_SCHEMA_VERSION = 2
 
 
@@ -39,12 +38,18 @@ def _counts_from_dict(distribution: dict[str, int]) -> FailureCounts:
 
 
 def load_headline_json(path: Path) -> tuple[Cell, ...]:
-    """Load ``data/headline.json`` and return the cell tuple."""
+    """Load ``data/headline.json`` and return the cell tuple.
+
+    Accepts schema v1 and v2; v2 simply adds ``ablation`` and
+    ``welch_tests`` siblings that this function ignores (use
+    :func:`load_dashboard_data` for the full v2 payload).
+    """
     payload = json.loads(Path(path).read_text())
-    if payload.get("schema_version") != _HEADLINE_SCHEMA_VERSION:
+    schema = payload.get("schema_version")
+    if schema not in _HEADLINE_SCHEMA_VERSIONS_SUPPORTED:
         raise ValueError(
-            f"headline.json schema_version expected "
-            f"{_HEADLINE_SCHEMA_VERSION}, got {payload.get('schema_version')!r}"
+            f"headline.json schema_version expected one of "
+            f"{sorted(_HEADLINE_SCHEMA_VERSIONS_SUPPORTED)}, got {schema!r}"
         )
     cells: list[Cell] = []
     for raw in payload["cells"]:
@@ -133,68 +138,75 @@ def load_phase4_ablation(
     return tuple(conditions), tuple(welches)
 
 
-def load_phase4_eval_results(
-    *, a_path: Path, b_path: Path, c_path: Path
-) -> dict[str, FailureCounts]:
-    """Read the three Phase 4 eval_results JSONs.
+def load_dashboard_data(path: Path) -> DashboardData:
+    """Load the full :class:`DashboardData` bundle from ``data/headline.json``.
 
-    The eval_results JSONs do not embed the failure-mode distribution
-    directly — the distribution lives in the corresponding
-    ``data/taxonomy/auto_labels_<run_id>.json``. This loader walks each
-    eval_results -> auto_labels by sibling lookup of the run_id.
+    Requires schema v2 (cells + ablation + welch_tests inline). This is
+    the only loader the runtime dashboard calls; it reads exactly one
+    tracked file and has no dependency on gitignored ``outputs/`` or
+    ``data/taxonomy/`` artifacts.
     """
-    by_cond: dict[str, FailureCounts] = {}
-    for cond_id, path in (("A", a_path), ("B", b_path), ("C", c_path)):
-        eval_payload = json.loads(Path(path).read_text())
-        run_id = eval_payload["run_id"]
-        # outputs/{eval,residual}/<cell>/eval_results_*.json — repo root is 3 levels up.
-        repo_root = Path(path).resolve().parents[3]
-        labels_path = repo_root / "data" / "taxonomy" / f"auto_labels_{run_id}.json"
-        labels_payload = json.loads(labels_path.read_text())
-        by_cond[cond_id] = _counts_from_dict(labels_payload["distribution"])
-    return by_cond
+    payload = json.loads(Path(path).read_text())
+    schema = payload.get("schema_version")
+    if schema != 2:
+        raise ValueError(
+            f"load_dashboard_data requires headline.json schema_version 2, "
+            f"got {schema!r}"
+        )
+
+    cells = load_headline_json(path)
+
+    ablation: list[AblationCondition] = []
+    for raw in payload.get("ablation", ()):
+        per_seed = raw["per_seed_means"]
+        if len(per_seed) != 3:
+            raise ValueError(
+                f"ablation condition {raw['condition_id']!r} has "
+                f"{len(per_seed)} per_seed_means; expected 3"
+            )
+        ci = raw["bootstrap_ci"]
+        ablation.append(
+            AblationCondition(
+                condition_id=cast(Literal["A", "B", "C"], raw["condition_id"]),
+                label=str(raw["label"]),
+                mean_tsr_custom=float(raw["mean_tsr_custom"]),
+                std_tsr_custom=float(raw["std_tsr_custom"]),
+                per_seed_means=(
+                    float(per_seed[0]),
+                    float(per_seed[1]),
+                    float(per_seed[2]),
+                ),
+                bootstrap_ci=(float(ci[0]), float(ci[1])),
+                failure_counts=_counts_from_dict(raw["failure_counts"]),
+                run_id=str(raw["run_id"]),
+            )
+        )
+
+    welch: list[WelchT] = []
+    for raw in payload.get("welch_tests", ()):
+        welch.append(
+            WelchT(
+                arm_id=str(raw["arm_id"]),
+                t_statistic=float(raw["t_statistic"]),
+                df=float(raw["df"]),
+                p_one_sided=float(raw["p_one_sided"]),
+            )
+        )
+
+    return DashboardData(
+        cells=cells,
+        ablation=tuple(ablation),
+        welch_tests=tuple(welch),
+        schema_version=schema,
+        generated_at=str(payload.get("generated_at", "")),
+    )
 
 
 def load_all(*, repo_root: Path) -> DashboardData:
-    """Aggregate all dashboard data sources into one :class:`DashboardData`."""
-    cells = load_headline_json(repo_root / "data" / "headline.json")
-    ablation, welches = load_phase4_ablation(
-        repo_root / "docs" / "figures" / "phase4_ablation.json"
-    )
-    counts = load_phase4_eval_results(
-        a_path=repo_root
-        / "outputs"
-        / "eval"
-        / "act_spatial_y+5cm"
-        / "eval_results_w6k2wole.json",
-        b_path=repo_root
-        / "outputs"
-        / "residual"
-        / "y+5cm_sparse"
-        / "eval_results_o6ukyo53.json",
-        c_path=repo_root
-        / "outputs"
-        / "residual"
-        / "y+5cm_shaped"
-        / "eval_results_43czuigy.json",
-    )
-    ablation_with_counts = tuple(
-        AblationCondition(
-            condition_id=c.condition_id,
-            label=c.label,
-            mean_tsr_custom=c.mean_tsr_custom,
-            std_tsr_custom=c.std_tsr_custom,
-            per_seed_means=c.per_seed_means,
-            bootstrap_ci=c.bootstrap_ci,
-            failure_counts=counts[c.condition_id],
-            run_id=c.run_id,
-        )
-        for c in ablation
-    )
-    return DashboardData(
-        cells=cells,
-        ablation=ablation_with_counts,
-        welch_tests=welches,
-        schema_version=_HEADLINE_SCHEMA_VERSION,
-        generated_at=_dt.datetime.now(_dt.UTC).isoformat(timespec="seconds"),
-    )
+    """Aggregate all dashboard data into one :class:`DashboardData`.
+
+    Reads exactly one tracked file (``data/headline.json``), produced
+    by ``scripts/build_headline_json.py``. No runtime dependency on the
+    gitignored auto_labels or eval_results files.
+    """
+    return load_dashboard_data(repo_root / "data" / "headline.json")

@@ -12,28 +12,16 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Project metadata and library code.
+# Project metadata, library code, and dashboard skeleton.
 COPY pyproject.toml README.md /app/
 COPY roboeval /app/roboeval
-
-# Dashboard runtime + deploy artifacts.
 COPY analysis/dashboard /app/analysis/dashboard
 
-# Pre-baked data the dashboard reads at boot.
+# The only data file the runtime dashboard reads — schema v2 bundles
+# cells + ablation + Welch's t-tests inline (built by
+# scripts/build_headline_json.py from the gitignored auto_labels at
+# build time so the runtime image stays self-contained).
 COPY data/headline.json /app/data/headline.json
-COPY docs/figures/phase4_ablation.json /app/docs/figures/phase4_ablation.json
-COPY outputs/eval/act_spatial_y+5cm/eval_results_w6k2wole.json \
-     /app/outputs/eval/act_spatial_y+5cm/eval_results_w6k2wole.json
-COPY outputs/residual/y+5cm_sparse/eval_results_o6ukyo53.json \
-     /app/outputs/residual/y+5cm_sparse/eval_results_o6ukyo53.json
-COPY outputs/residual/y+5cm_shaped/eval_results_43czuigy.json \
-     /app/outputs/residual/y+5cm_shaped/eval_results_43czuigy.json
-
-# auto_labels sidecars for the three Phase 4 conditions
-# (data.load_phase4_eval_results does a sibling lookup by run_id).
-COPY data/taxonomy/auto_labels_w6k2wole.json /app/data/taxonomy/auto_labels_w6k2wole.json
-COPY data/taxonomy/auto_labels_o6ukyo53.json /app/data/taxonomy/auto_labels_o6ukyo53.json
-COPY data/taxonomy/auto_labels_43czuigy.json /app/data/taxonomy/auto_labels_43czuigy.json
 
 RUN pip install --upgrade pip \
  && pip install -e . \

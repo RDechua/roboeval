@@ -1,4 +1,10 @@
-"""Tests for the dashboard data loaders."""
+"""Tests for the dashboard data loaders.
+
+These read only tracked artifacts (``data/headline.json`` schema v2
+and ``docs/figures/phase4_ablation.json``) plus synthetic tmp_path
+fixtures — no dependency on the gitignored ``outputs/`` or
+``data/taxonomy/`` files, so they pass in CI.
+"""
 
 from __future__ import annotations
 
@@ -9,9 +15,9 @@ import pytest
 
 from roboeval.dashboard.data import (
     load_all,
+    load_dashboard_data,
     load_headline_json,
     load_phase4_ablation,
-    load_phase4_eval_results,
 )
 from roboeval.dashboard.models import DashboardData
 
@@ -40,26 +46,22 @@ def test_load_phase4_ablation_three_conditions() -> None:
     assert {w.arm_id for w in welches} == {"B", "C"}
 
 
-def test_load_phase4_eval_results_populates_failure_counts() -> None:
-    counts_by_condition = load_phase4_eval_results(
-        a_path=_repo_root()
-        / "outputs"
-        / "eval"
-        / "act_spatial_y+5cm"
-        / "eval_results_w6k2wole.json",
-        b_path=_repo_root()
-        / "outputs"
-        / "residual"
-        / "y+5cm_sparse"
-        / "eval_results_o6ukyo53.json",
-        c_path=_repo_root()
-        / "outputs"
-        / "residual"
-        / "y+5cm_shaped"
-        / "eval_results_43czuigy.json",
-    )
-    assert set(counts_by_condition.keys()) == {"A", "B", "C"}
-    assert counts_by_condition["B"].recovery_failure == 106
+def test_load_dashboard_data_populates_ablation_failure_counts() -> None:
+    """Schema v2 carries ablation + failure_counts inline.
+
+    Validates the canonical Phase 4 numbers (Condition B sparse:
+    106 recovery_failure rollouts) without any gitignored deps.
+    """
+    data = load_dashboard_data(_repo_root() / "data" / "headline.json")
+    by_id = {c.condition_id: c for c in data.ablation}
+    assert by_id["B"].failure_counts.recovery_failure == 106
+
+
+def test_load_dashboard_data_rejects_non_v2(tmp_path: Path) -> None:
+    bad = tmp_path / "bad.json"
+    bad.write_text(json.dumps({"schema_version": 1, "cells": []}))
+    with pytest.raises(ValueError, match="schema_version 2"):
+        load_dashboard_data(bad)
 
 
 def test_load_all_returns_dashboard_data() -> None:
