@@ -1,7 +1,7 @@
 # When residual RL made ACT worse: a 13-point honest null on AlohaTransferCube
 
 <!-- 2026-05-21 · Rubeno Dechua · ~2000 words ·
-     Repo: https://github.com/RubenoDechua/roboeval -->
+     Repo: https://github.com/RDechua/roboeval -->
 
 <!-- §1 Lede -->
 
@@ -136,7 +136,7 @@ means the residual *helps*). I also report the per-rollout failure-mode
 distribution from the PRD §7.2 classifier. All raw evidence — `eval_results_*.json`,
 `auto_labels_*.json`, the aggregator output — is committed under
 `outputs/` and `data/taxonomy/`, and the live dashboard at
-`huggingface.co/spaces/RubenoDechua/roboeval` exposes the same numbers
+`huggingface.co/spaces/rubenodechua/roboeval` exposes the same numbers
 interactively.
 
 ## Result: the residual hurt the base
@@ -258,10 +258,10 @@ something interesting to chase.
 
 The eval harness, classifier, training loop, aggregator, and dashboard are
 all in place to run any of these in an afternoon. Repo:
-[github.com/RubenoDechua/roboeval](https://github.com/RubenoDechua/roboeval)
+[github.com/RDechua/roboeval](https://github.com/RDechua/roboeval)
 (PRD, week-by-week log, and the full Phase 4 writeup are under `docs/`).
 Live dashboard:
-[huggingface.co/spaces/RubenoDechua/roboeval](https://huggingface.co/spaces/RubenoDechua/roboeval).
+[huggingface.co/spaces/rubenodechua/roboeval](https://huggingface.co/spaces/rubenodechua/roboeval).
 
 If you're hiring for evaluation engineering or residual RL, my email is
 in the GitHub profile.

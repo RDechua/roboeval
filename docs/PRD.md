@@ -519,7 +519,7 @@ External validation is partially outside the author's control. These targets are
 
 The original "Day 1 Checklist" is preserved here as a setup record. **Phase 1 was closed at the end of Week 1**; the items below are the state on which all subsequent work rests. Current project state and weekly journal live in `docs/research-log.md`.
 
-1. GitHub repository created: `RubenoDechua/roboeval` — public, MIT license, Python .gitignore.
+1. GitHub repository created: `RDechua/roboeval` — public, MIT license, Python .gitignore.
 2. `uv` installed: `curl -LsSf https://astral.sh/uv/install.sh | sh`.
 3. Project environment: `uv venv .venv && source .venv/bin/activate`.
 4. Core dependencies pinned in `pyproject.toml` — `lerobot==0.4.4`, `gymnasium`, `mujoco`, `stable-baselines3`, `hydra-core`, `wandb`, `plotly`, `ruff`, `mypy`.

@@ -130,14 +130,14 @@ def _build_layout() -> dbc.Container:
                 [
                     html.A(
                         "GitHub",
-                        href="https://github.com/RubenoDechua/roboeval",
+                        href="https://github.com/RDechua/roboeval",
                         target="_blank",
                         className="me-3",
                     ),
                     html.A(
                         "PRD",
                         href=(
-                            "https://github.com/RubenoDechua/roboeval/blob/"
+                            "https://github.com/RDechua/roboeval/blob/"
                             "main/docs/PRD.md"
                         ),
                         target="_blank",
