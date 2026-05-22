@@ -1,6 +1,6 @@
 ---
 title: RoboEval
-emoji: "robot"
+emoji: 🤖
 colorFrom: blue
 colorTo: gray
 sdk: docker
