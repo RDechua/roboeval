@@ -1,0 +1,1502 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Failure-mode study and residual RL for ACT/Diffusion Policy on AlohaTransferCube.">
+      
+      
+      
+        <link rel="canonical" href="https://rdechua.github.io/roboeval/blog/2026-05-21-honest-null-residual/">
+      
+      
+        <link rel="prev" href="../../reference/dashboard/">
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Honest null on +5cm - RoboEval</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#when-residual-rl-made-act-worse-a-13-point-honest-null-on-alohatransfercube" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="RoboEval" class="md-header__button md-logo" aria-label="RoboEval" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            RoboEval
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Honest null on +5cm
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/RDechua/roboeval" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    RDechua/roboeval
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../PRD/" class="md-tabs__link">
+          
+  
+  
+  Project
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../reference/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
+  
+  Blog
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="RoboEval" class="md-nav__button md-logo" aria-label="RoboEval" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    RoboEval
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/RDechua/roboeval" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    RDechua/roboeval
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Project
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../PRD/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PRD
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/envs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    envs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/evaluation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    evaluation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/policies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    policies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/taxonomy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    taxonomy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/residual/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    residual
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/dashboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    dashboard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blog
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Blog
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Honest null on +5cm
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Honest null on +5cm
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#setup-act-on-alohatransfercube" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Setup: ACT on AlohaTransferCube
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-5-cm-what-an-evaluation-harness-told-me" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why +5 cm? What an evaluation harness told me
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-hypothesis-a-small-additive-residual" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The hypothesis: a small additive residual
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-experiment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The experiment
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#result-the-residual-hurt-the-base" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Result: the residual hurt the base
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-it-hurt-diagnosing-the-four-levers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why it hurt: diagnosing the four levers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Why it hurt: diagnosing the four levers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Limitations
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-id-try-next-v11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What I'd try next (v1.1)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#setup-act-on-alohatransfercube" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Setup: ACT on AlohaTransferCube
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-5-cm-what-an-evaluation-harness-told-me" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why +5 cm? What an evaluation harness told me
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-hypothesis-a-small-additive-residual" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The hypothesis: a small additive residual
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-experiment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The experiment
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#result-the-residual-hurt-the-base" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Result: the residual hurt the base
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-it-hurt-diagnosing-the-four-levers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why it hurt: diagnosing the four levers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Why it hurt: diagnosing the four levers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Limitations
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-id-try-next-v11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What I'd try next (v1.1)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/RDechua/roboeval/edit/main/docs/blog/2026-05-21-honest-null-residual.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="when-residual-rl-made-act-worse-a-13-point-honest-null-on-alohatransfercube">When residual RL made ACT worse: a 13-point honest null on AlohaTransferCube<a class="headerlink" href="#when-residual-rl-made-act-worse-a-13-point-honest-null-on-alohatransfercube" title="Permanent link">&para;</a></h1>
+<!-- 2026-05-21 · Rubeno Dechua · ~2000 words ·
+     Repo: https://github.com/RubenoDechua/roboeval -->
+
+<!-- §1 Lede -->
+
+<p>I spent a month testing how a state-of-the-art imitation learning policy
+breaks when you nudge the world. The single biggest failure mode was
+<strong>Recovery</strong> — the policy sweeps past the cube without engaging — and at
++5 cm of spatial shift, it accounts for 59% of all rollouts. I built a
+residual RL loop on top of the frozen base policy to try to recover those
+rollouts. Across two reward shapings and three seeds per arm, the residual
+moved the task-success rate <strong>−13.3 pp</strong> under sparse reward and <strong>−10.7 pp</strong>
+under shaped. This is the writeup of why that happened and what I'd try next.</p>
+<!-- §2 TL;DR box -->
+
+<blockquote>
+<p><strong>TL;DR.</strong> Frozen ACT on the +5 cm spatial cell scored <strong>0.320 mean TSR</strong>
+(3 seeds × 50 rollouts). A PPO residual on top of it scored <strong>0.187</strong>
+with sparse reward (Δ = −13.3 pp; Welch t = −2.95, p_one-sided = 0.034
+for <em>significant decrease</em>) and <strong>0.213</strong> with shaped reward (Δ = −10.7 pp;
+t = −1.95, p = 0.062). The residual hurts under both reward shapings. The
+failure mode is diagnosable: PPO drifts off zero with no positive bootstrap,
+α is large enough to compound, and the MLP starts random. The v1.1 fix
+path is concrete — see the end.</p>
+</blockquote>
+<h2 id="setup-act-on-alohatransfercube">Setup: ACT on AlohaTransferCube<a class="headerlink" href="#setup-act-on-alohatransfercube" title="Permanent link">&para;</a></h2>
+<!-- §3 -->
+
+<p>The base policy is <strong>ACT</strong> (Action Chunking with Transformers), trained on
+human demonstrations of the bimanual ALOHA Transfer Cube task and published
+by the LeRobot project as
+<code>lerobot/act_aloha_sim_transfer_cube_human</code>. The model card reports a
+task-success rate of 0.83 across 500 sequential seeds; my reproduction with
+3 seeds × 50 rollouts lands at 0.80 ± 0.057, well within sampling noise.
+Verified, frozen, treated as the ground truth.</p>
+<p>The task: two 7-DoF arms pick up a small cube with the right gripper, lift,
+transfer to the left gripper, and place it. The simulator is <code>gym_aloha</code>'s
+MuJoCo build; observations are 14-DoF agent positions plus three RGB cameras;
+actions are absolute joint targets in [-1, 1]. Each episode runs up to 400
+steps and terminates on a same-step contact between the left gripper and the
+cube once the cube is above a calibrated z-threshold.</p>
+<p>I evaluate against a custom <strong>geometric</strong> task-success rate (<code>mean_tsr_custom</code>)
+that thresholds on cube position rather than environment reward. The custom
+criterion calibrates <code>target_xy</code> and <code>xy_tolerance</code> from 50 nominal rollouts
+and freezes them at <code>data/calibration/transfer_cube_target_xy.json</code>. This
+removes one degree of freedom from the success signal — there's no debate
+about whether a near-miss counts.</p>
+<p>Why a 2026 reader should care: ACT is the cheapest competent bimanual
+manipulation policy published this year, every robot-learning lab in PRD §4.1
+is either using or replacing it, and "what does it break on" is the question
+underneath nearly every Robot Learning Engineer interview I've seen.</p>
+<h2 id="why-5-cm-what-an-evaluation-harness-told-me">Why +5 cm? What an evaluation harness told me<a class="headerlink" href="#why-5-cm-what-an-evaluation-harness-told-me" title="Permanent link">&para;</a></h2>
+<!-- §4 — embeds docs/figures/cross_axis_degradation.png -->
+
+<p>Before reaching for residual RL, I built an evaluation harness with two
+perturbation axes. <strong>Spatial:</strong> translate the cube's initial XY pose by
+±1, ±3, ±5 cm. <strong>Temporal:</strong> delay the action chunk by 1, 3, or 5 env
+steps. Same base policy, same 150 rollouts per cell, same geometric
+success criterion. The story turned out to be asymmetric across axes:</p>
+<p><img alt="Cross-axis degradation" src="../../figures/cross_axis_degradation.png" /></p>
+<p><em>ACT's mean task-success rate vs perturbation magnitude. Left: spatial
+cube shifts in cm; 67 pp drop at -5 cm vs nominal. Right: action-chunk
+delays in env steps; only 11 pp drop at 5 steps. ±σ shaded across 3 seeds
+× 50 rollouts per cell.</em></p>
+<p><strong>Spatial is brittle.</strong> Pull the cube 5 cm in either direction and TSR
+collapses; the curve is nonlinear and asymmetric, with the negative
+direction degrading harder (12.7% at -5 cm versus 30.7% at +5 cm).
+<strong>Temporal is robust.</strong> A 5-step delay only costs 11 pp — ACT's 100-step
+action chunking absorbs latency that would wreck a stateless policy.</p>
+<p>The failure-mode classifier I ran on every rollout (PRD §7.2 taxonomy:
+Success / Grasp / Approach / Recovery / Oscillation / Timeout / Visual
+confusion) gave a clearer signal still: under both axes the dominant
+failure was <strong>Recovery</strong> — the gripper moves into roughly the right region
+and then sweeps through without engaging. At +5 cm spatial that single
+mode accounts for <strong>59% of all rollouts</strong>. One failure mode that the base
+policy reliably reproduces is the cleanest possible target for a residual
+correction; everywhere else on the perturbation grid the failures were
+multi-modal and harder to attack. So: +5 cm spatial.</p>
+<h2 id="the-hypothesis-a-small-additive-residual">The hypothesis: a small additive residual<a class="headerlink" href="#the-hypothesis-a-small-additive-residual" title="Permanent link">&para;</a></h2>
+<!-- §5 — embeds the mermaid diagram -->
+
+<pre class="mermaid"><code>flowchart LR
+    O[observation o_t] --&gt; ACT[Frozen ACT base]
+    O --&gt; R[Residual MLP δ_θ(o_t)]
+    ACT --&gt; S[a_base]
+    R --&gt; SCALE[× α = 0.05]
+    S --&gt; SUM((+))
+    SCALE --&gt; SUM
+    SUM --&gt; A[a_t = a_base + α · δ_θ]</code></pre>
+<p><em>Per-step composition: ACT's frozen action plus an MLP residual scaled
+by α = 0.05. PPO learns δ_θ to maximize the reward.</em></p>
+<p>The architecture is small on purpose. The residual is a two-layer GELU MLP
+(256 → 256) emitting a 6-d correction in joint-target space, scaled by
+α=0.05. With ACT's per-dim action std around σ=0.135, that bounds the
+residual's per-step perturbation at roughly ±0.007 — small enough, I
+thought, that it would either help or do nothing.</p>
+<p>I ran two reward shapings as a paired ablation. <strong>Sparse:</strong> +1 on the
+geometric success criterion firing, 0 otherwise. <strong>Shaped:</strong> sparse plus a
+distance-shaping term <code>-w · ‖cube_xy - target_xy‖₂</code> with <code>w = 1.0</code>,
+matching the PRD §8 design. The intent was to check whether sparse reward
+was the limiting factor; the alternative hypothesis was that the residual
+just lacks signal.</p>
+<h2 id="the-experiment">The experiment<a class="headerlink" href="#the-experiment" title="Permanent link">&para;</a></h2>
+<!-- §6 -->
+
+<p>Three conditions × 3 seeds × 50 rollouts = <strong>450 rollouts</strong> total.</p>
+<ul>
+<li><strong>A</strong> (control): frozen ACT only, no residual. <code>act_spatial_y+5cm.yaml</code>. W&amp;B run <code>w6k2wole</code>.</li>
+<li><strong>B</strong> (sparse): frozen ACT + residual PPO trained for ~500 k env steps
+  with the sparse reward. <code>residual_ppo_y+5cm_sparse.yaml</code>. Eval run
+  <code>o6ukyo53</code>.</li>
+<li><strong>C</strong> (shaped): same architecture and training budget, shaped reward.
+  <code>residual_ppo_y+5cm_shaped.yaml</code>. Eval run <code>43czuigy</code>.</li>
+</ul>
+<p>I report mean ± std of <code>mean_tsr_custom</code> across the three seed groups for
+each arm, plus a one-sided Welch's t-test comparing each residual arm to
+condition A (null hypothesis: arm ≤ A; alternative: arm &gt; A; rejection
+means the residual <em>helps</em>). I also report the per-rollout failure-mode
+distribution from the PRD §7.2 classifier. All raw evidence — <code>eval_results_*.json</code>,
+<code>auto_labels_*.json</code>, the aggregator output — is committed under
+<code>outputs/</code> and <code>data/taxonomy/</code>, and the live dashboard at
+<code>huggingface.co/spaces/RubenoDechua/roboeval</code> exposes the same numbers
+interactively.</p>
+<h2 id="result-the-residual-hurt-the-base">Result: the residual hurt the base<a class="headerlink" href="#result-the-residual-hurt-the-base" title="Permanent link">&para;</a></h2>
+<!-- §7 — embeds docs/figures/phase4_ablation_failure_distribution.png -->
+
+<p>The headline numbers (mean ± std across 3 seed groups, n=50 each):</p>
+<table>
+<thead>
+<tr>
+<th>Arm</th>
+<th>Mean TSR</th>
+<th>Δ vs A</th>
+<th>Welch's t</th>
+<th>p (one-sided, residual &gt; A)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A — frozen base</td>
+<td>0.320 ± 0.059</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>B — residual, sparse</td>
+<td>0.187 ± 0.025</td>
+<td><strong>−13.3 pp</strong></td>
+<td>−2.95</td>
+<td>0.966</td>
+</tr>
+<tr>
+<td>C — residual, shaped</td>
+<td>0.213 ± 0.050</td>
+<td><strong>−10.7 pp</strong></td>
+<td>−1.95</td>
+<td>0.938</td>
+</tr>
+</tbody>
+</table>
+<p>Both residual arms fall below the base. The one-sided p-values above
+test "the residual helps"; flip the alternative and the negative effect
+is significant at p ≈ 0.03 (sparse), borderline at p ≈ 0.06 (shaped).
+Per-seed spread is tight (0.025 sparse) — this is signal, not noise.</p>
+<p>The failure-mode distribution is the more informative half of the result:</p>
+<p><img alt="Failure modes at +5 cm" src="../../figures/phase4_ablation_failure_distribution.png" /></p>
+<p><em>Failure-mode distribution at +5 cm spatial. The residual under both
+reward shapings shrinks the success bucket and grows Recovery; Approach
+failures jump 7× under sparse reward. 150 rollouts per condition,
+3 seeds × 50.</em></p>
+<p>Three qualitative shifts stand out. <strong>Success</strong> collapses from 30.7%
+(base) to 18.7% (sparse) / 21.3% (shaped). <strong>Recovery</strong> grows from 59.3%
+to 70.7% / 73.3% — the residual is making the dominant failure <em>more</em>
+dominant. And <strong>Approach failures</strong> jump from 0.7% (base) to 5.3%
+(sparse) — a 7× increase. The residual is not just adding jitter; it is
+occasionally yanking the gripper away from the cube. That's a directional
+miscorrection, not noise. The next section asks why.</p>
+<h2 id="why-it-hurt-diagnosing-the-four-levers">Why it hurt: diagnosing the four levers<a class="headerlink" href="#why-it-hurt-diagnosing-the-four-levers" title="Permanent link">&para;</a></h2>
+<!-- §8 -->
+
+<p>Residual RL on a frozen base policy has four design knobs: the base, the
+reward, the blend coefficient α, and the residual network's initialization.
+Reasoning through each:</p>
+<p><strong>The base.</strong> ACT at +5 cm scored 30.7% — already in the long-tail regime
+where 59% of rollouts are Recovery. There isn't much <em>headroom</em> for a
+small additive correction here; the cube is far enough from the trained
+distribution that the base's joint targets are pointing at the wrong
+position to begin with. A small residual cannot fix a large pose error;
+it can only nudge a near-miss into a hit. <strong>The base policy was probably
+too broken at this cell for a same-architecture additive fix.</strong></p>
+<p><strong>The reward.</strong> The sparse reward is +1 only on the success criterion
+firing — and at this cell, only 19% of <em>the residual's own training
+rollouts</em> fired the criterion. That's a sparse-reward dead zone:
+PPO's advantage estimates are dominated by terminal value, the policy
+gradient is mostly noise, and the entropy bonus drifts the mean
+nonzero. The shaped reward was supposed to fix that, and it does narrow
+the gap (−10.7 pp vs. −13.3 pp), but not close it. <strong>Reward shaping
+helped a little; it didn't get over the hump.</strong></p>
+<p><strong>Alpha.</strong> α=0.05 × σ=0.135 gives a per-dim perturbation of about ±0.007.
+That's small per step but compounds: ACT runs ~385 steps to success and
+the residual integrates an action perturbation every one of them. If
+PPO's mean has drifted by even 0.05 of a standard deviation in a
+<em>consistent direction</em>, the gripper accumulates several centimeters of
+trajectory error before the episode ends. The Approach-failure jump under
+sparse reward is exactly what this looks like geometrically.</p>
+<p><strong>The init.</strong> The residual MLP starts with default He-uniform weights and
+a learnable log-σ initialized at -2 (per SB3 defaults). At t=0 the
+network's output is small-but-random, not zero. PPO has to learn "do
+nothing" from scratch, in a sparse-reward regime, which is harder than
+learning a correction. <strong>The residual never gets to "no harm" as a
+lower bound</strong> — and "no harm" is what α should buy us in principle.</p>
+<p>Three of those four levers have concrete v1.1 fixes. Below.</p>
+<h3 id="limitations">Limitations<a class="headerlink" href="#limitations" title="Permanent link">&para;</a></h3>
+<p>Three honest caveats. <strong>(1) Single base policy.</strong> I evaluated only ACT;
+diffusion-policy results may differ both quantitatively and in failure
+morphology. <strong>(2) Single cell.</strong> The ablation ran at +5 cm spatial only.
+The architectural fixes above need re-running at +1 and +3 cm where the
+base has more headroom before we can claim they generalise. <strong>(3) Small
+N.</strong> 3 seeds × 50 rollouts per arm is enough for the qualitative story
+but the Welch's t p-values are wide because df ≈ 3; a follow-up should
+run 5+ seed groups to tighten the confidence intervals.</p>
+<h2 id="what-id-try-next-v11">What I'd try next (v1.1)<a class="headerlink" href="#what-id-try-next-v11" title="Permanent link">&para;</a></h2>
+<!-- §9 — closes with code/dashboard/docs links -->
+
+<p>The diagnosis points at four concrete fixes, ordered by leverage:</p>
+<p><strong>Distillation-init residual</strong> (top priority, smallest change). Zero the
+output-layer weights and bias of <code>ResidualMLP</code> and shrink the rest by 0.1
+at construction time. The policy now starts as "do nothing" — α · δ is
+~0 for the first thousands of PPO steps, so the base policy's performance
+is a strict lower bound. This is a one-line <code>nn.init.zeros_</code> change in
+<code>roboeval/residual/policy.py</code>. It directly addresses lever 4.</p>
+<p><strong>Co-trainable α.</strong> Move α out of the YAML and into the residual policy
+as a <code>nn.Parameter</code> with a small initial value (0.01) and an <code>L2</code>
+penalty. PPO learns when to use the residual rather than always
+saturating it. This addresses lever 3 and pairs naturally with the
+distillation init — together they bound the residual's worst case to
+"no harm."</p>
+<p><strong>ACT-encoder features.</strong> The current residual reads raw 14-DoF agent
+positions. Wire the residual's input through ACT's transformer encoder
+(via the <code>feature_extractor</code> slot the codebase already has) so it sees
+the same vision-conditioned representation the base does. This should
+make the residual sim-to-real portable and addresses lever 1 by sharing
+the base's perceptual prior.</p>
+<p><strong>Smaller perturbation cells.</strong> Re-run the ablation at +1 cm and +3 cm
+where the base still has 72% and 55% TSR respectively. There's actual
+headroom there for an additive correction; if the residual <em>still</em> hurts
+in that regime, the architectural story above is wrong and we have
+something interesting to chase.</p>
+<p>The eval harness, classifier, training loop, aggregator, and dashboard are
+all in place to run any of these in an afternoon. Repo:
+<a href="https://github.com/RubenoDechua/roboeval">github.com/RubenoDechua/roboeval</a>
+(PRD, week-by-week log, and the full Phase 4 writeup are under <code>docs/</code>).
+Live dashboard:
+<a href="https://huggingface.co/spaces/RubenoDechua/roboeval">huggingface.co/spaces/RubenoDechua/roboeval</a>.</p>
+<p>If you're hiring for evaluation engineering or residual RL, my email is
+in the GitHub profile.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/RDechua/roboeval" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://huggingface.co/spaces/RubenoDechua/roboeval" target="_blank" rel="noopener" title="huggingface.co" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12.025 1.13c-5.77 0-10.449 4.647-10.449 10.378 0 1.112.178 2.181.503 3.185.064-.222.203-.444.416-.577a.96.96 0 0 1 .524-.15c.293 0 .584.124.84.284.278.173.48.408.71.694.226.282.458.611.684.951v-.014c.017-.324.106-.622.264-.874s.403-.487.762-.543c.3-.047.596.06.787.203s.31.313.4.467c.15.257.212.468.233.542.01.026.653 1.552 1.657 2.54.616.605 1.01 1.223 1.082 1.912.055.537-.096 1.059-.38 1.572.637.121 1.294.187 1.967.187.657 0 1.298-.063 1.921-.178-.287-.517-.44-1.041-.384-1.581.07-.69.465-1.307 1.081-1.913 1.004-.987 1.647-2.513 1.657-2.539.021-.074.083-.285.233-.542.09-.154.208-.323.4-.467a1.08 1.08 0 0 1 .787-.203c.359.056.604.29.762.543s.247.55.265.874v.015c.225-.34.457-.67.683-.952.23-.286.432-.52.71-.694.257-.16.547-.284.84-.285a.97.97 0 0 1 .524.151c.228.143.373.388.43.625l.006.04a10.3 10.3 0 0 0 .534-3.273c0-5.731-4.678-10.378-10.449-10.378M8.327 6.583a1.5 1.5 0 0 1 .713.174 1.487 1.487 0 0 1 .617 2.013c-.183.343-.762-.214-1.102-.094-.38.134-.532.914-.917.71a1.487 1.487 0 0 1 .69-2.803m7.486 0a1.487 1.487 0 0 1 .689 2.803c-.385.204-.536-.576-.916-.71-.34-.12-.92.437-1.103.094a1.487 1.487 0 0 1 .617-2.013 1.5 1.5 0 0 1 .713-.174m-10.68 1.55a.96.96 0 1 1 0 1.921.96.96 0 0 1 0-1.92m13.838 0a.96.96 0 1 1 0 1.92.96.96 0 0 1 0-1.92M8.489 11.458c.588.01 1.965 1.157 3.572 1.164 1.607-.007 2.984-1.155 3.572-1.164.196-.003.305.12.305.454 0 .886-.424 2.328-1.563 3.202-.22-.756-1.396-1.366-1.63-1.32q-.011.001-.02.006l-.044.026-.01.008-.03.024q-.018.017-.035.036l-.032.04a1 1 0 0 0-.058.09l-.014.025q-.049.088-.11.19a1 1 0 0 1-.083.116 1.2 1.2 0 0 1-.173.18q-.035.029-.075.058a1.3 1.3 0 0 1-.251-.243 1 1 0 0 1-.076-.107c-.124-.193-.177-.363-.337-.444-.034-.016-.104-.008-.2.022q-.094.03-.216.087-.06.028-.125.063l-.13.074q-.067.04-.136.086a3 3 0 0 0-.135.096 3 3 0 0 0-.26.219 2 2 0 0 0-.12.121 2 2 0 0 0-.106.128l-.002.002a2 2 0 0 0-.09.132l-.001.001a1.2 1.2 0 0 0-.105.212q-.013.036-.024.073c-1.139-.875-1.563-2.317-1.563-3.203 0-.334.109-.457.305-.454m.836 10.354c.824-1.19.766-2.082-.365-3.194-1.13-1.112-1.789-2.738-1.789-2.738s-.246-.945-.806-.858-.97 1.499.202 2.362c1.173.864-.233 1.45-.685.64-.45-.812-1.683-2.896-2.322-3.295s-1.089-.175-.938.647 2.822 2.813 2.562 3.244-1.176-.506-1.176-.506-2.866-2.567-3.49-1.898.473 1.23 2.037 2.16c1.564.932 1.686 1.178 1.464 1.53s-3.675-2.511-4-1.297c-.323 1.214 3.524 1.567 3.287 2.405-.238.839-2.71-1.587-3.216-.642-.506.946 3.49 2.056 3.522 2.064 1.29.33 4.568 1.028 5.713-.624m5.349 0c-.824-1.19-.766-2.082.365-3.194 1.13-1.112 1.789-2.738 1.789-2.738s.246-.945.806-.858.97 1.499-.202 2.362c-1.173.864.233 1.45.685.64.451-.812 1.683-2.896 2.322-3.295s1.089-.175.938.647-2.822 2.813-2.562 3.244 1.176-.506 1.176-.506 2.866-2.567 3.49-1.898-.473 1.23-2.037 2.16c-1.564.932-1.686 1.178-1.464 1.53s3.675-2.511 4-1.297c.323 1.214-3.524 1.567-3.287 2.405.238.839 2.71-1.587 3.216-.642.506.946-3.49 2.056-3.522 2.064-1.29.33-4.568 1.028-5.713-.624"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "search.highlight", "search.suggest", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
