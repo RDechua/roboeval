@@ -28,14 +28,17 @@ jobs:
           python-version: "3.11"
           cache: pip
 
-      - name: Install docs extras
+      - name: Install docs extras (lightweight)
+        # Full project deps (lerobot + CUDA torch + mujoco + …) won't fit
+        # on the runner's 14 GB disk. Griffe parses source statically by
+        # default, so the docs build only needs the mkdocs tooling plus
+        # the roboeval source on disk. Editable + --no-deps gives us that
+        # without dragging in the full ML stack.
         run: |
           python -m pip install --upgrade pip
-          # The mkdocstrings handler imports the package it documents, so
-          # install the project itself plus the docs extra.
-          pip install --index-url https://download.pytorch.org/whl/cpu \
-                      "torch>=2.0"
-          pip install -e '.[docs]'
+          pip install "mkdocs>=1.6" "mkdocs-material>=9.5" \
+                      "mkdocstrings[python]>=0.25"
+          pip install --no-deps -e .
 
       - name: Build (strict)
         run: mkdocs build --strict
