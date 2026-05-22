@@ -120,6 +120,25 @@ just lacks signal.
 ## The experiment
 <!-- §6 -->
 
+Three conditions × 3 seeds × 50 rollouts = **450 rollouts** total.
+
+- **A** (control): frozen ACT only, no residual. `act_spatial_y+5cm.yaml`. W&B run `w6k2wole`.
+- **B** (sparse): frozen ACT + residual PPO trained for ~500 k env steps
+  with the sparse reward. `residual_ppo_y+5cm_sparse.yaml`. Eval run
+  `o6ukyo53`.
+- **C** (shaped): same architecture and training budget, shaped reward.
+  `residual_ppo_y+5cm_shaped.yaml`. Eval run `43czuigy`.
+
+I report mean ± std of `mean_tsr_custom` across the three seed groups for
+each arm, plus a one-sided Welch's t-test comparing each residual arm to
+condition A (null hypothesis: arm ≤ A; alternative: arm > A; rejection
+means the residual *helps*). I also report the per-rollout failure-mode
+distribution from the PRD §7.2 classifier. All raw evidence — `eval_results_*.json`,
+`auto_labels_*.json`, the aggregator output — is committed under
+`outputs/` and `data/taxonomy/`, and the live dashboard at
+`huggingface.co/spaces/RubenoDechua/roboeval` exposes the same numbers
+interactively.
+
 ## Result: the residual hurt the base
 <!-- §7 — embeds docs/figures/phase4_ablation_failure_distribution.png -->
 
