@@ -262,9 +262,10 @@ Phase 5 dashboard landed. Remaining Phase 5 work:
    annotated; 1080p min. Use a successful nominal rollout + a +5 cm
    Recovery rollout side-by-side, then overlay the residual's
    composed action vs the base.
-3. **Blog post / arXiv-style writeup** — builds on
-   `docs/phase4_ablation.md` + the Phase 3 cross-axis findings in
-   `docs/research-log.md`. Honest-null framing is the hook.
+3. **Blog post landed** ✓ — `docs/blog/2026-05-21-honest-null-residual.md`,
+   ~2090 words, honest-null framing, three figures (cross-axis curves,
+   Phase 4 stacked bar, mermaid residual architecture). Linked from
+   README. arXiv-style PDF cross-post deferred.
 4. **MkDocs site** — static-site wrapper around PRD, research-log,
    phase4_ablation.md, plus auto-generated API docs.
 5. **κ relabel** when 2026-05-24 unlocks — samples already exported
