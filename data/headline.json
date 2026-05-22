@@ -1,7 +1,7 @@
 {
-  "schema_version": 1,
-  "generated_at": "2026-05-21T20:56:19+00:00",
-  "source": "Built by scripts/build_headline_json.py from data/taxonomy/auto_labels_*.json + docs/STATE.md.",
+  "schema_version": 2,
+  "generated_at": "2026-05-21T21:28:33+00:00",
+  "source": "Built by scripts/build_headline_json.py from data/taxonomy/auto_labels_*.json + docs/STATE.md + docs/figures/phase4_ablation.json.",
   "cells": [
     {
       "cell_id": "y-5cm",
@@ -222,6 +222,100 @@
       },
       "n_rollouts": 150,
       "run_id": "aycdd8hi"
+    }
+  ],
+  "ablation": [
+    {
+      "condition_id": "A",
+      "label": "Frozen base only",
+      "mean_tsr_custom": 0.32,
+      "std_tsr_custom": 0.058878405775518984,
+      "per_seed_means": [
+        0.26,
+        0.4,
+        0.3
+      ],
+      "bootstrap_ci": [
+        0.26,
+        0.4000000000000001
+      ],
+      "failure_counts": {
+        "success": 46,
+        "grasp_failure": 1,
+        "approach_failure": 1,
+        "recovery_failure": 89,
+        "action_oscillation": 0,
+        "timeout": 0,
+        "visual_confusion": 0,
+        "needs_review": 13
+      },
+      "run_id": "w6k2wole"
+    },
+    {
+      "condition_id": "B",
+      "label": "Residual RL, sparse reward",
+      "mean_tsr_custom": 0.18666666666666668,
+      "std_tsr_custom": 0.024944382578492942,
+      "per_seed_means": [
+        0.22,
+        0.18,
+        0.16
+      ],
+      "bootstrap_ci": [
+        0.16,
+        0.22
+      ],
+      "failure_counts": {
+        "success": 28,
+        "grasp_failure": 1,
+        "approach_failure": 8,
+        "recovery_failure": 106,
+        "action_oscillation": 0,
+        "timeout": 0,
+        "visual_confusion": 0,
+        "needs_review": 7
+      },
+      "run_id": "o6ukyo53"
+    },
+    {
+      "condition_id": "C",
+      "label": "Residual RL, shaped reward",
+      "mean_tsr_custom": 0.21333333333333335,
+      "std_tsr_custom": 0.0498887651569859,
+      "per_seed_means": [
+        0.28,
+        0.2,
+        0.16
+      ],
+      "bootstrap_ci": [
+        0.16,
+        0.28
+      ],
+      "failure_counts": {
+        "success": 31,
+        "grasp_failure": 1,
+        "approach_failure": 3,
+        "recovery_failure": 110,
+        "action_oscillation": 0,
+        "timeout": 0,
+        "visual_confusion": 0,
+        "needs_review": 5
+      },
+      "run_id": "43czuigy"
+    }
+  ],
+  "welch_tests": [
+    {
+      "arm_id": "B",
+      "t_statistic": -2.948839123097942,
+      "df": 2.695541401273885,
+      "p_one_sided": 0.9657149283212578
+    },
+    {
+      "arm_id": "C",
+      "t_statistic": -1.9547111097008831,
+      "df": 3.8950108459869845,
+      "p_one_sided": 0.9378981410804068
     }
   ]
 }

@@ -193,6 +193,82 @@ def _scan_auto_labels(repo_root: Path) -> dict[str, dict[str, Any]]:
     return by_cell
 
 
+# Map ablation condition_id -> (run_id, label) for the +5 cm Phase 4 cells.
+# Mirrors the canonical labels in docs/figures/phase4_ablation.json.
+_ABLATION_RUNS: dict[str, tuple[str, str]] = {
+    "A": ("w6k2wole", "Frozen base only"),
+    "B": ("o6ukyo53", "Residual RL, sparse reward"),
+    "C": ("43czuigy", "Residual RL, shaped reward"),
+}
+
+
+def _load_ablation_block(
+    repo_root: Path,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Read ``docs/figures/phase4_ablation.json`` and the 3 ablation auto_labels.
+
+    Returns the ``ablation`` list (each entry merges the ablation stats
+    with the run's failure_counts) and the ``welch_tests`` list.
+    """
+    ablation_path = repo_root / "docs" / "figures" / "phase4_ablation.json"
+    if not ablation_path.exists():
+        raise FileNotFoundError(
+            f"missing {ablation_path}; run `roboeval residual aggregate` first"
+        )
+    ablation_payload = json.loads(ablation_path.read_text())
+
+    # Index conditions and comparisons by id.
+    conditions_by_id = {c["condition_id"]: c for c in ablation_payload["conditions"]}
+    comparisons_by_id = {c["condition_id"]: c for c in ablation_payload["comparisons"]}
+
+    ablation: list[dict[str, Any]] = []
+    for cond_id, (run_id, label) in _ABLATION_RUNS.items():
+        raw = conditions_by_id.get(cond_id)
+        if raw is None:
+            raise FileNotFoundError(
+                f"phase4_ablation.json is missing condition {cond_id!r}"
+            )
+        # Pull failure_counts from the run's auto_labels (gitignored at
+        # build time, baked into headline.json from here on).
+        labels_path = repo_root / "data" / "taxonomy" / f"auto_labels_{run_id}.json"
+        if not labels_path.exists():
+            raise FileNotFoundError(
+                f"missing {labels_path}; regenerate via "
+                "scripts/relabel_from_wandb.py"
+            )
+        labels_payload = json.loads(labels_path.read_text())
+        ablation.append(
+            {
+                "condition_id": cond_id,
+                "label": label,
+                "mean_tsr_custom": raw["mean"],
+                "std_tsr_custom": raw["std"],
+                "per_seed_means": list(raw["per_seed_means"]),
+                "bootstrap_ci": [raw["bootstrap_ci_low"], raw["bootstrap_ci_high"]],
+                "failure_counts": labels_payload["distribution"],
+                "run_id": run_id,
+            }
+        )
+
+    welch: list[dict[str, Any]] = []
+    for arm_id in ("B", "C"):
+        raw = comparisons_by_id.get(arm_id)
+        if raw is None:
+            raise FileNotFoundError(
+                f"phase4_ablation.json is missing comparison for arm {arm_id!r}"
+            )
+        welch.append(
+            {
+                "arm_id": arm_id,
+                "t_statistic": raw["t_statistic"],
+                "df": raw["df"],
+                "p_one_sided": raw["p_value"],
+            }
+        )
+
+    return ablation, welch
+
+
 def build_headline_payload(*, repo_root: Path) -> dict[str, Any]:
     """Produce the headline.json payload as a Python dict.
 
@@ -200,8 +276,11 @@ def build_headline_payload(*, repo_root: Path) -> dict[str, Any]:
         repo_root: Absolute path to the RoboEval repository root.
 
     Returns:
-        The headline.json payload (schema_version 1) ready to be
-        ``json.dumps``-ed.
+        The headline.json payload (schema_version 2) ready to be
+        ``json.dumps``-ed. Schema v2 includes the Phase 4 ablation
+        and Welch's t-test blocks so the runtime dashboard can read
+        a single tracked artifact (no dependency on the gitignored
+        ``outputs/`` or ``data/taxonomy/`` files at runtime).
 
     Raises:
         FileNotFoundError: when expected auto_labels or ablation files
@@ -236,14 +315,19 @@ def build_headline_payload(*, repo_root: Path) -> dict[str, Any]:
             }
         )
 
+    ablation, welch_tests = _load_ablation_block(repo_root)
+
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "generated_at": _dt.datetime.now(_dt.UTC).isoformat(timespec="seconds"),
         "source": (
             "Built by scripts/build_headline_json.py from "
-            "data/taxonomy/auto_labels_*.json + docs/STATE.md."
+            "data/taxonomy/auto_labels_*.json + docs/STATE.md + "
+            "docs/figures/phase4_ablation.json."
         ),
         "cells": cells,
+        "ablation": ablation,
+        "welch_tests": welch_tests,
     }
 
 
@@ -253,7 +337,13 @@ def main() -> int:
     payload = build_headline_payload(repo_root=repo_root)
     out_path = repo_root / "data" / "headline.json"
     out_path.write_text(json.dumps(payload, indent=2) + "\n")
-    _LOG.info("wrote %s (%d cells)", out_path, len(payload["cells"]))
+    _LOG.info(
+        "wrote %s (%d cells, %d ablation arms, %d Welch tests)",
+        out_path,
+        len(payload["cells"]),
+        len(payload["ablation"]),
+        len(payload["welch_tests"]),
+    )
     return 0
 
 
