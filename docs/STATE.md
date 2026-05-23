@@ -251,28 +251,32 @@ docs/phase4_ablation.md                         # PRD §8.3 G4 writeup
 
 ## Next session intent
 
-Phase 5 dashboard landed. Remaining Phase 5 work:
+Phase 5 mostly shipped (2026-05-22). What's left:
 
-1. **Deploy the dashboard to HF Spaces** — manual one-time push of
-   `analysis/dashboard/` + tracked data to `huggingface.co/spaces/
-   rubenodechua/roboeval`. Dockerfile is ready; first build verifies
-   the <3 s warm load. Steps in
-   `docs/superpowers/plans/2026-05-21-phase5-dashboard.md` Task 12 Step 6.
-2. **90-second demo video** — narrated; failure modes visually
-   annotated; 1080p min. Use a successful nominal rollout + a +5 cm
-   Recovery rollout side-by-side, then overlay the residual's
-   composed action vs the base.
-3. **Blog post landed** ✓ — `docs/blog/2026-05-21-honest-null-residual.md`,
-   ~2090 words, honest-null framing, three figures (cross-axis curves,
-   Phase 4 stacked bar, mermaid residual architecture). Linked from
-   README. arXiv-style PDF cross-post deferred.
-4. **MkDocs site landed** ✓ — live at https://rdechua.github.io/roboeval/.
-   Lean 4-tab nav (Home / Project / API / Blog), 7 mkdocstrings submodule
-   pages, auto-deploy via `.github/workflows/docs.yml` on push to main.
-   `mkdocs build --strict` enforced as a CI gate. Repo flipped to public
-   so GitHub Pages serves for free.
-5. **κ relabel** when 2026-05-24 unlocks — samples already exported
-   (`alr0r0p2`, `18xb5ob0`). Closes G3.
+1. **HF Spaces dashboard landed** ✓ — live at
+   https://rubenodechua-roboeval.hf.space/ (canonical lowercase HF
+   username `rubenodechua`; canonical GitHub username `RDechua`).
+   Auto-redeploys on push to `main` of the Space repo. Dockerfile uses
+   `pip install --no-deps -e .` to fit the free-tier disk budget. Mirror
+   recipe in memory: `feedback_hf_spaces.md`.
+2. **Blog post landed** ✓ — `docs/blog/2026-05-21-honest-null-residual.md`,
+   ~2090 words, honest-null framing, three figures. Linked from README.
+   arXiv-style PDF cross-post deferred.
+3. **MkDocs site landed** ✓ — live at https://rdechua.github.io/roboeval/.
+   Lean 4-tab nav, 7 mkdocstrings submodule pages, auto-deploy via
+   `.github/workflows/docs.yml`. Repo is public so Pages serves for free.
+4. **90-second demo video** — script + shot list + ffmpeg/iMovie
+   recipe shipped at `docs/blog/demo-video-script.md`. **User
+   recording on own time** (~2 hr). When YouTube URL exists, wire the
+   badge into the top-level README and the dashboard's HF Space README,
+   then close this item.
+5. **κ relabel for G3** — script + Sunday runbook shipped at
+   `scripts/relabel_score.py` (4 unit tests) and
+   `docs/kappa-relabel-runbook.md`. **Embargo unlocks 2026-05-24T22:01:39
+   UTC (Sunday 3:01 PM PT).** User runs the 5-step procedure that day;
+   if κ > 0.6 on both ±5 cm samples, G3 closes. Samples already
+   exported and tracked: `data/taxonomy/relabel_sample_18xb5ob0.json`
+   (-5 cm) and `data/taxonomy/relabel_sample_alr0r0p2.json` (+5 cm).
 
 Dashboard implementation notes:
 
