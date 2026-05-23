@@ -964,39 +964,6 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#a1-nominal-successful-rollout-target-output-a1_rawmp4-8-s" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        A1 — Nominal successful rollout (target output: A1_raw.mp4, ~8 s)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#a2-5-cm-recovery-failure-rollout-target-output-a2_rawmp4-8-s" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        A2 — +5 cm Recovery failure rollout (target output: A2_raw.mp4, ~8 s)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#a3-side-by-side-composite-target-output-a3_sidebysidemp4" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        A3 — Side-by-side composite (target output: A3_sidebyside.mp4)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#b1-b2-b3-already-committed-pngs-target-outputs-copies-in-the-asset-folder" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1042,17 +1009,6 @@
         
       </ul>
     </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#ffmpeg-recipe-a3-side-by-side-composite" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        ffmpeg recipe — A3 side-by-side composite
-      
-    </span>
-  </a>
   
 </li>
       
@@ -1195,13 +1151,15 @@
 <p><strong>Narration:</strong></p>
 <blockquote>
 <p>ACT is a state-of-the-art imitation policy on the bimanual ALOHA Transfer Cube. At nominal,
-it succeeds 80% of the time. Shift the cube five centimeters, and it sweeps right past it.</p>
+it succeeds 80% of the time. Shift the cube five centimeters, and 59% of the failures are
+the gripper sweeping right past it.</p>
 </blockquote>
-<p><strong>Visual:</strong> Side-by-side picture-in-picture.
-- <strong>Left:</strong> A1 — nominal rollout, successful pick-and-place. Mute audio. Loop or freeze on final placement.
-- <strong>Right:</strong> A2 — +5 cm Recovery failure. Gripper closes on empty air past the cube. Loop or freeze on the miss.
-- <strong>On-screen text</strong> at 0:08 (bottom-third lower-third): "+5 cm spatial shift → 59% Recovery failures".</p>
-<p><strong>Cut at 0:10</strong> to full-screen B1 (failure-mode bar chart).</p>
+<p><strong>Visual:</strong> Full-screen B1 with a slow Ken Burns zoom.
+- <strong>0:00 → 0:04:</strong> B1 — <code>docs/figures/spatial_failure_distribution.png</code>. Start at full-chart framing so the audience reads the axis (cells −5 → +5 cm).
+- <strong>0:04 → 0:10:</strong> Zoom slowly into the +5 cm column. The Recovery slice (dominant colour) fills the frame by 0:09.
+- <strong>On-screen text</strong> at 0:06 (large, centred, bold over translucent backdrop): "+5 cm spatial shift → 59% Recovery failures".</p>
+<p><strong>Cut at 0:10</strong> continues into Beat 2 on the same chart (no scene change; the camera just pulls back out).</p>
+<p><em>Note:</em> the original Beat 1 design called for side-by-side rollout video (A1 nominal vs. A2 +5 cm failure). The eval harness doesn't render or log video, so no rollout footage exists. B1 alone carries the hook — the +5 cm Recovery column is the visual equivalent of "robot misses."</p>
 <hr />
 <h2 id="beat-2-the-taxonomy-010-025-35-words">Beat 2 · The taxonomy (0:10 → 0:25, ~35 words)<a class="headerlink" href="#beat-2-the-taxonomy-010-025-35-words" title="Permanent link">&para;</a></h2>
 <p><strong>Narration:</strong></p>
@@ -1211,7 +1169,7 @@ over the cube without engaging — dominates. It accounts for 59% of failures at
 emerges on both spatial and temporal perturbation axes.</p>
 </blockquote>
 <p><strong>Visual:</strong>
-- <strong>0:10 → 0:18:</strong> Full-screen B1 — <code>docs/figures/spatial_failure_distribution.png</code>. Zoom slowly from full chart to the +5 cm column.
+- <strong>0:10 → 0:18:</strong> Pull the Ken Burns zoom back out to full-chart B1, then pan slowly across all seven cells (−5 cm → +5 cm) so the audience sees the failure-mode distribution shift across the perturbation axis.
 - <strong>0:18 → 0:25:</strong> Cross-cut to B2 — <code>docs/figures/cross_axis_degradation.png</code>. Animate the left (spatial) panel fading in first, then the right (temporal) panel.
 - <strong>On-screen text</strong> at 0:20: "spatial brittle · temporal robust".</p>
 <p><strong>Cut at 0:25</strong> to full-screen C1.</p>
@@ -1276,24 +1234,6 @@ diagnosis is the contribution.</p>
 </thead>
 <tbody>
 <tr>
-<td><strong>A1</strong></td>
-<td>Nominal successful rollout (gym-aloha)</td>
-<td>W&amp;B run <code>auchm66k</code> (ACT nominal) — rollout media tab</td>
-<td>Download a successful rollout MP4 from W&amp;B. Alternatively, re-render with <code>roboeval evaluate --config configs/baseline/act_nominal.yaml</code> and capture the first success from <code>outputs/eval/act_nominal/videos/</code></td>
-</tr>
-<tr>
-<td><strong>A2</strong></td>
-<td>+5 cm Recovery failure rollout</td>
-<td>W&amp;B run <code>w6k2wole</code> (ACT +5 cm) — rollout media tab</td>
-<td>Same as above; find a clean Recovery failure</td>
-</tr>
-<tr>
-<td><strong>A3</strong></td>
-<td>Side-by-side composite of A1 + A2</td>
-<td>Build from A1 and A2</td>
-<td><code>ffmpeg</code> <code>hstack</code>, see recipe below</td>
-</tr>
-<tr>
 <td><strong>B1</strong></td>
 <td>Spatial failure-mode stacked bar</td>
 <td><code>docs/figures/spatial_failure_distribution.png</code></td>
@@ -1325,6 +1265,9 @@ diagnosis is the contribution.</p>
 </tr>
 </tbody>
 </table>
+<blockquote>
+<p><strong>A1, A2, A3 were dropped.</strong> The eval harness never logged or rendered rollout video, so there's no nominal-success or +5 cm-failure clip to pull. Beat 1 now opens on B1 (zoomed +5 cm column) instead of a side-by-side picture-in-picture. If you ever want the rollout footage back, add a <code>--record-video</code> flag to <code>roboeval evaluate</code> using mujoco's offscreen renderer, then re-run the nominal and +5 cm evals.</p>
+</blockquote>
 <hr />
 <h2 id="shot-capture-walkthrough-step-by-step">Shot capture walkthrough — step by step<a class="headerlink" href="#shot-capture-walkthrough-step-by-step" title="Permanent link">&para;</a></h2>
 <p>This section expands every row of the shot list into a clickable procedure. Work
@@ -1337,88 +1280,6 @@ through it top to bottom; each shot writes one file into
 brew<span class="w"> </span>install<span class="w"> </span>ffmpeg<span class="w">          </span><span class="c1"># ~3 min on first install</span>
 ffmpeg<span class="w"> </span>-version<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-1<span class="w">    </span><span class="c1"># sanity check</span>
 </code></pre></div>
-<p>W&amp;B entity for every run URL below: <strong><code>rdechua-university-of-san-francisco</code></strong>.</p>
-<hr />
-<h3 id="a1-nominal-successful-rollout-target-output-a1_rawmp4-8-s">A1 — Nominal successful rollout (target output: <code>A1_raw.mp4</code>, ~8 s)<a class="headerlink" href="#a1-nominal-successful-rollout-target-output-a1_rawmp4-8-s" title="Permanent link">&para;</a></h3>
-<p><strong>Source:</strong> W&amp;B run <code>auchm66k</code> (ACT, nominal cell).</p>
-<ol>
-<li>Open <a href="https://wandb.ai/rdechua-university-of-san-francisco/roboeval/runs/auchm66k">https://wandb.ai/rdechua-university-of-san-francisco/roboeval/runs/auchm66k</a>
-   in a browser while signed in to W&amp;B.</li>
-<li>Click the <strong>Media</strong> tab (left sidebar; the panel icon with a filmstrip).</li>
-<li>Find the panel titled <code>eval/videos</code> (or <code>rollouts/video</code>, whichever variant
-   was logged for this run). Each tile is one rollout.</li>
-<li>Use the <strong>success filter:</strong> sort or filter the table on the <code>success</code> metric
-   = 1. If the table view is collapsed, click the gear icon → "Show success
-   column" → sort descending. Pick any rollout where success=1.</li>
-<li>Hover the chosen video tile → click the ⋮ menu (top-right corner of the
-   tile) → <strong>Download video</strong>. It saves as something like
-   <code>media_video_eval-videos_42_0_&lt;hash&gt;.mp4</code>.</li>
-<li>Rename and move to the asset folder:
-   <div class="highlight"><pre><span></span><code>mv<span class="w"> </span>~/Downloads/media_video_eval-videos_*.mp4<span class="w"> </span>~/Desktop/roboeval-demo-assets/A1_raw.mp4
-</code></pre></div></li>
-<li>Trim to 8 s starting from a clean frame (skip the first ~1 s if the gym
-   reset is jumpy):
-   <div class="highlight"><pre><span></span><code>ffmpeg<span class="w"> </span>-ss<span class="w"> </span><span class="m">1</span><span class="w"> </span>-t<span class="w"> </span><span class="m">8</span><span class="w"> </span>-i<span class="w"> </span>A1_raw.mp4<span class="w"> </span>-c<span class="w"> </span>copy<span class="w"> </span>A1.mp4
-</code></pre></div></li>
-<li>Sanity check it plays and is muted-ready (the rollout has no audio anyway):
-   <div class="highlight"><pre><span></span><code>ffprobe<span class="w"> </span>A1.mp4<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s2">&quot;Duration|Stream&quot;</span>
-</code></pre></div>
-   Expect <code>Duration: 00:00:08.0x</code> and a single video stream, no audio.</li>
-</ol>
-<p><strong>Fallback if W&amp;B media is missing:</strong> re-render locally.</p>
-<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/Users/rubenodehcua/Desktop/roboeval
-roboeval<span class="w"> </span>evaluate<span class="w"> </span>--config<span class="w"> </span>configs/baseline/act_nominal.yaml<span class="w"> </span>--num-rollouts<span class="w"> </span><span class="m">5</span>
-<span class="c1"># Outputs land under outputs/eval/act_nominal/videos/seed*/rollout_*.mp4</span>
-ls<span class="w"> </span>outputs/eval/act_nominal/videos/seed0/<span class="w"> </span><span class="p">|</span><span class="w"> </span>head
-cp<span class="w"> </span>outputs/eval/act_nominal/videos/seed0/rollout_0_success.mp4<span class="w"> </span><span class="se">\</span>
-<span class="w">   </span>~/Desktop/roboeval-demo-assets/A1_raw.mp4
-<span class="c1"># Then run the same ffmpeg -ss 1 -t 8 trim from step 7 above.</span>
-</code></pre></div>
-<hr />
-<h3 id="a2-5-cm-recovery-failure-rollout-target-output-a2_rawmp4-8-s">A2 — +5 cm Recovery failure rollout (target output: <code>A2_raw.mp4</code>, ~8 s)<a class="headerlink" href="#a2-5-cm-recovery-failure-rollout-target-output-a2_rawmp4-8-s" title="Permanent link">&para;</a></h3>
-<p><strong>Source:</strong> W&amp;B run <code>w6k2wole</code> (ACT, +5 cm cell, Phase 4 condition A re-eval).</p>
-<ol>
-<li>Open <a href="https://wandb.ai/rdechua-university-of-san-francisco/roboeval/runs/w6k2wole">https://wandb.ai/rdechua-university-of-san-francisco/roboeval/runs/w6k2wole</a>.</li>
-<li>Click <strong>Media</strong> → find <code>eval/videos</code>.</li>
-<li>Filter for <strong>failures:</strong> success=0. From those, you want a <strong>Recovery</strong>
-   failure specifically — the gripper visibly passes <em>over</em> the cube without
-   closing on it. Skip Approach failures (gripper never gets near) and
-   Grasp-and-drop failures (cube briefly lifts then falls).</li>
-<li>The taxonomy auto-labels are in
-     <code>data/taxonomy/auto_labels_w6k2wole.json</code> if it exists locally — you can
-     <code>jq '.labels[] | select(.failure_mode=="Recovery") | .rollout_idx'</code>
-     to get a list of rollout indices that are confirmed Recovery failures,
-     then cross-reference the video panel by index.</li>
-<li>Download the chosen tile (same ⋮ → Download video flow as A1).</li>
-<li>Rename and trim:
-   <div class="highlight"><pre><span></span><code>mv<span class="w"> </span>~/Downloads/media_video_eval-videos_*.mp4<span class="w"> </span>~/Desktop/roboeval-demo-assets/A2_raw.mp4
-ffmpeg<span class="w"> </span>-ss<span class="w"> </span><span class="m">1</span><span class="w"> </span>-t<span class="w"> </span><span class="m">8</span><span class="w"> </span>-i<span class="w"> </span>A2_raw.mp4<span class="w"> </span>-c<span class="w"> </span>copy<span class="w"> </span>A2.mp4
-</code></pre></div></li>
-<li>Visually verify: open <code>A2.mp4</code> in QuickTime, scrub to the moment the gripper
-   closes on empty air past the cube. That's the money frame for Beat 1.</li>
-</ol>
-<p><strong>Tip:</strong> if the W&amp;B run doesn't have rollout videos (this can happen on
-re-evaluation runs where logging was turned off), re-render the cell:</p>
-<div class="highlight"><pre><span></span><code>roboeval<span class="w"> </span>evaluate<span class="w"> </span>--config<span class="w"> </span>configs/baseline/act_spatial_y+5cm.yaml<span class="w"> </span>--num-rollouts<span class="w"> </span><span class="m">50</span>
-<span class="c1"># Filter for Recovery failures via the auto-classifier output:</span>
-roboeval<span class="w"> </span>taxonomy<span class="w"> </span>classify<span class="w"> </span>outputs/eval/act_spatial_y+5cm/eval_results_*.json<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--out<span class="w"> </span>/tmp/auto_labels_a2.json
-jq<span class="w"> </span><span class="s1">&#39;.labels[] | select(.failure_mode==&quot;Recovery&quot;) | .rollout_idx&#39;</span><span class="w"> </span>/tmp/auto_labels_a2.json
-<span class="c1"># Pick one index and copy the matching video file</span>
-</code></pre></div>
-<hr />
-<h3 id="a3-side-by-side-composite-target-output-a3_sidebysidemp4">A3 — Side-by-side composite (target output: <code>A3_sidebyside.mp4</code>)<a class="headerlink" href="#a3-side-by-side-composite-target-output-a3_sidebysidemp4" title="Permanent link">&para;</a></h3>
-<p>Run the ffmpeg recipe in the next section (it operates on <code>A1.mp4</code> and
-<code>A2.mp4</code> you just created). One command, ~5 s runtime:</p>
-<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>~/Desktop/roboeval-demo-assets
-ffmpeg<span class="w"> </span>-i<span class="w"> </span>A1.mp4<span class="w"> </span>-i<span class="w"> </span>A2.mp4<span class="w"> </span>-filter_complex<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;[0:v]scale=960:720,setsar=1[l];[1:v]scale=960:720,setsar=1[r];[l][r]hstack=inputs=2[out]&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-map<span class="w"> </span><span class="s2">&quot;[out]&quot;</span><span class="w"> </span>-an<span class="w"> </span>-c:v<span class="w"> </span>libx264<span class="w"> </span>-crf<span class="w"> </span><span class="m">18</span><span class="w"> </span>-pix_fmt<span class="w"> </span>yuv420p<span class="w"> </span>A3_sidebyside.mp4
-</code></pre></div>
-<p>Open <code>A3_sidebyside.mp4</code> in QuickTime to confirm the panels are aligned
-(left = nominal, right = +5 cm). If one looks squashed, rerun with the source
-order swapped or adjust the per-input <code>scale=</code> to match aspect.</p>
-<hr />
 <h3 id="b1-b2-b3-already-committed-pngs-target-outputs-copies-in-the-asset-folder">B1, B2, B3 — Already-committed PNGs (target outputs: copies in the asset folder)<a class="headerlink" href="#b1-b2-b3-already-committed-pngs-target-outputs-copies-in-the-asset-folder" title="Permanent link">&para;</a></h3>
 <p>The figures are already in the repo. Copy them into the asset folder so iMovie
 sees them next to the videos:</p>
@@ -1522,10 +1383,7 @@ the first chart renders, <em>then</em> start recording. The Space stays warm for
 <hr />
 <h3 id="final-asset-folder-checklist">Final asset folder checklist<a class="headerlink" href="#final-asset-folder-checklist" title="Permanent link">&para;</a></h3>
 <p>After all the steps above, <code>~/Desktop/roboeval-demo-assets/</code> should contain:</p>
-<div class="highlight"><pre><span></span><code>A1.mp4              # 8 s, nominal success
-A2.mp4              # 8 s, +5 cm Recovery failure
-A3_sidebyside.mp4   # 8 s, side-by-side composite
-B1.png              # spatial failure-mode stacked bar
+<div class="highlight"><pre><span></span><code>B1.png              # spatial failure-mode stacked bar
 B2.png              # cross-axis degradation curve
 B3.png              # Phase 4 3-condition stacked bar
 C1.png              # residual architecture diagram
@@ -1534,19 +1392,6 @@ diagram.mmd         # mermaid source (optional, kept for re-render)
 </code></pre></div>
 <p>Drag the whole folder into iMovie's Project Media library and you're ready
 for the <strong>Recording procedure</strong> section below.</p>
-<hr />
-<h2 id="ffmpeg-recipe-a3-side-by-side-composite">ffmpeg recipe — A3 side-by-side composite<a class="headerlink" href="#ffmpeg-recipe-a3-side-by-side-composite" title="Permanent link">&para;</a></h2>
-<p>If A1 and A2 have different lengths, trim to the shorter one first:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Trim both to 8 seconds (match the Beat 1 budget)</span>
-ffmpeg<span class="w"> </span>-ss<span class="w"> </span><span class="m">0</span><span class="w"> </span>-t<span class="w"> </span><span class="m">8</span><span class="w"> </span>-i<span class="w"> </span>A1.mp4<span class="w"> </span>-c<span class="w"> </span>copy<span class="w"> </span>A1_trim.mp4
-ffmpeg<span class="w"> </span>-ss<span class="w"> </span><span class="m">0</span><span class="w"> </span>-t<span class="w"> </span><span class="m">8</span><span class="w"> </span>-i<span class="w"> </span>A2.mp4<span class="w"> </span>-c<span class="w"> </span>copy<span class="w"> </span>A2_trim.mp4
-
-<span class="c1"># Stack side-by-side, scale each panel to 960x720 (fills 1920x720)</span>
-ffmpeg<span class="w"> </span>-i<span class="w"> </span>A1_trim.mp4<span class="w"> </span>-i<span class="w"> </span>A2_trim.mp4<span class="w"> </span>-filter_complex<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;[0:v]scale=960:720,setsar=1[l];[1:v]scale=960:720,setsar=1[r];[l][r]hstack=inputs=2[out]&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-map<span class="w"> </span><span class="s2">&quot;[out]&quot;</span><span class="w"> </span>-an<span class="w"> </span>-c:v<span class="w"> </span>libx264<span class="w"> </span>-crf<span class="w"> </span><span class="m">18</span><span class="w"> </span>-pix_fmt<span class="w"> </span>yuv420p<span class="w"> </span>A3_sidebyside.mp4
-</code></pre></div>
-<p>Drop <code>A3_sidebyside.mp4</code> into iMovie as a single clip for Beat 1.</p>
 <hr />
 <h2 id="recording-procedure-mac-imovie">Recording procedure (Mac, iMovie)<a class="headerlink" href="#recording-procedure-mac-imovie" title="Permanent link">&para;</a></h2>
 <h3 id="one-time-setup-10-min">One-time setup (~10 min)<a class="headerlink" href="#one-time-setup-10-min" title="Permanent link">&para;</a></h3>
@@ -1564,7 +1409,7 @@ ffmpeg<span class="w"> </span>-i<span class="w"> </span>A1_trim.mp4<span class="
 </ol>
 <h3 id="step-2-assemble-the-visuals-60-min">Step 2 — assemble the visuals (~60 min)<a class="headerlink" href="#step-2-assemble-the-visuals-60-min" title="Permanent link">&para;</a></h3>
 <ol>
-<li>Drag the B-roll files (A3, B1, B2, B3, C1, D1) into the iMovie project library.</li>
+<li>Drag the B-roll files (B1, B2, B3, C1, D1) into the iMovie project library.</li>
 <li>Place them on the video track aligned to the narration timestamps in this script.</li>
 <li>For static images (B1, B2, B3, C1), set the clip duration to match the beat:</li>
 <li>Click the image clip → use the inspector to set duration in seconds.</li>
@@ -1617,10 +1462,10 @@ ffmpeg<span class="w"> </span>-i<span class="w"> </span>A1_trim.mp4<span class="
 <h2 id="total-estimated-effort">Total estimated effort<a class="headerlink" href="#total-estimated-effort" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Recording narration: 20 min</li>
-<li>Pulling W&amp;B rollouts + ffmpeg composite: 30 min</li>
+<li>Rendering C1 (mermaid → PNG) + recording D1 (dashboard click-through): 15 min</li>
 <li>iMovie assembly: 60 min</li>
 <li>Export + upload: 10 min</li>
-<li><strong>Total: ~2 hr.</strong> Front-load the narration recording — getting that clean is the slowest variable.</li>
+<li><strong>Total: ~1 hr 45 min.</strong> Front-load the narration recording — getting that clean is the slowest variable.</li>
 </ul>
 
 
