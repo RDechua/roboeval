@@ -92,13 +92,13 @@ multi-modal and harder to attack. So: +5 cm spatial.
 
 ```mermaid
 flowchart LR
-    O[observation o_t] --> ACT[Frozen ACT base]
-    O --> R[Residual MLP δ_θ(o_t)]
-    ACT --> S[a_base]
-    R --> SCALE[× α = 0.05]
+    O["observation o_t"] --> ACT["Frozen ACT base"]
+    O --> R["Residual MLP δ_θ(o_t)"]
+    ACT --> S["a_base"]
+    R --> SCALE["× α = 0.05"]
     S --> SUM((+))
     SCALE --> SUM
-    SUM --> A[a_t = a_base + α · δ_θ]
+    SUM --> A["a_t = a_base + α · δ_θ"]
 ```
 
 *Per-step composition: ACT's frozen action plus an MLP residual scaled
