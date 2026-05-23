@@ -223,17 +223,37 @@ beat's budget (B1 = 8 s, B2 = 7 s, B3 = 20 s).
    chart area, exclude the address bar and OS chrome.
 5. Click **Options → Microphone: None** (you'll narrate separately in Step 1
    of the recording procedure). Click **Record**.
-6. Perform this click-through in 10 seconds, smoothly:
-   1. **t = 0 s:** the page is loaded showing the cross-axis degradation
-      curve.
-   2. **t = 2 s:** click the **Axis filter** dropdown → switch from "Both"
-      to "Spatial". The right panel collapses.
-   3. **t = 4 s:** click the **+5 cm** cell selector. The failure-mode stack
-      below redraws.
-   4. **t = 6 s:** click the **Recovery** legend swatch to toggle it off,
-      then back on. Watch the stacked bars animate.
-   5. **t = 9 s:** scroll down to reveal the Phase 4 ablation panel. Pause
-      on a clear frame.
+6. Perform this 7-step click-through in 10 seconds. The sequence is
+   chosen for maximum visible state change per click (the cell dropdown
+   is the money click — it reshapes the failure-mode bar dramatically):
+   1. **t = 0.0 s:** page loaded on the Degradation curves panel ("Both"
+      axis filter, "TSR (custom)" metric — both defaults). Cursor visible
+      near the top.
+   2. **t = 2.0 s:** move cursor down to the **cell dropdown** (currently
+      "y+5cm"); click to open the menu.
+   3. **t = 3.0 s:** select **"nominal"**. The big stacked bar reshapes
+      from ~75% blue (Recovery) to ~80% green (Success). This is the
+      money frame — hold the cursor still here.
+   4. **t = 5.0 s:** click the dropdown again; select **"y+5cm"**. Bar
+      snaps back to blue-dominated. Viewer now reads: each cell tells a
+      different story.
+   5. **t = 6.0 s:** smooth scroll down to reveal the **Phase 4 ablation**
+      panel (three bars: A=base, B=sparse, C=shaped).
+   6. **t = 8.0 s:** hover the cursor over the **orange slice in
+      condition B** (the Approach growth). Plotly tooltip pops with the
+      count.
+   7. **t = 9.0 → 10.0 s:** hold the cursor still on the tooltip; freeze
+      frame. End on the three ablation bars + the popped tooltip.
+
+   **Things to skip on camera:** the "TSR (custom) / TSR (env) / TTS"
+   metric radios (changes are too subtle in <2 s), the legend swatch
+   toggles (tiny click target, looks fiddly), and the "Methods &
+   reproducibility" disclosure (11 lines of run IDs, unreadable in 2 s).
+
+   **Cold-start warm-up:** open the dashboard 5 min before recording so
+   HF Spaces wakes up. Reload right before pressing Record so the
+   selectors reset to default state ("Both" + "y+5cm"). The Space stays
+   alive ~5 min idle.
 7. Press the stop icon in the menu bar (or `⌃ ⌘ Esc`). QuickTime opens the
    recording in a new window.
 8. Trim with `⌘ T`: drag the yellow handles to keep just the 10 s of action,
