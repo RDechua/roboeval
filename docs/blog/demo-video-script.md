@@ -12,14 +12,17 @@ Five beats, ~225 words at 2.5 words/sec. Time-stamps below assume the cuts hit �
 **Narration:**
 
 > ACT is a state-of-the-art imitation policy on the bimanual ALOHA Transfer Cube. At nominal,
-> it succeeds 80% of the time. Shift the cube five centimeters, and it sweeps right past it.
+> it succeeds 80% of the time. Shift the cube five centimeters, and 59% of the failures are
+> the gripper sweeping right past it.
 
-**Visual:** Side-by-side picture-in-picture.
-- **Left:** A1 — nominal rollout, successful pick-and-place. Mute audio. Loop or freeze on final placement.
-- **Right:** A2 — +5 cm Recovery failure. Gripper closes on empty air past the cube. Loop or freeze on the miss.
-- **On-screen text** at 0:08 (bottom-third lower-third): "+5 cm spatial shift → 59% Recovery failures".
+**Visual:** Full-screen B1 with a slow Ken Burns zoom.
+- **0:00 → 0:04:** B1 — `docs/figures/spatial_failure_distribution.png`. Start at full-chart framing so the audience reads the axis (cells −5 → +5 cm).
+- **0:04 → 0:10:** Zoom slowly into the +5 cm column. The Recovery slice (dominant colour) fills the frame by 0:09.
+- **On-screen text** at 0:06 (large, centred, bold over translucent backdrop): "+5 cm spatial shift → 59% Recovery failures".
 
-**Cut at 0:10** to full-screen B1 (failure-mode bar chart).
+**Cut at 0:10** continues into Beat 2 on the same chart (no scene change; the camera just pulls back out).
+
+*Note:* the original Beat 1 design called for side-by-side rollout video (A1 nominal vs. A2 +5 cm failure). The eval harness doesn't render or log video, so no rollout footage exists. B1 alone carries the hook — the +5 cm Recovery column is the visual equivalent of "robot misses."
 
 ---
 
@@ -32,7 +35,7 @@ Five beats, ~225 words at 2.5 words/sec. Time-stamps below assume the cuts hit �
 > emerges on both spatial and temporal perturbation axes.
 
 **Visual:**
-- **0:10 → 0:18:** Full-screen B1 — `docs/figures/spatial_failure_distribution.png`. Zoom slowly from full chart to the +5 cm column.
+- **0:10 → 0:18:** Pull the Ken Burns zoom back out to full-chart B1, then pan slowly across all seven cells (−5 cm → +5 cm) so the audience sees the failure-mode distribution shift across the perturbation axis.
 - **0:18 → 0:25:** Cross-cut to B2 — `docs/figures/cross_axis_degradation.png`. Animate the left (spatial) panel fading in first, then the right (temporal) panel.
 - **On-screen text** at 0:20: "spatial brittle · temporal robust".
 
@@ -104,14 +107,13 @@ Five beats, ~225 words at 2.5 words/sec. Time-stamps below assume the cuts hit �
 
 | ID | What | Where it comes from | How to capture |
 |----|------|---------------------|----------------|
-| **A1** | Nominal successful rollout (gym-aloha) | W&B run `auchm66k` (ACT nominal) — rollout media tab | Download a successful rollout MP4 from W&B. Alternatively, re-render with `roboeval evaluate --config configs/baseline/act_nominal.yaml` and capture the first success from `outputs/eval/act_nominal/videos/` |
-| **A2** | +5 cm Recovery failure rollout | W&B run `w6k2wole` (ACT +5 cm) — rollout media tab | Same as above; find a clean Recovery failure |
-| **A3** | Side-by-side composite of A1 + A2 | Build from A1 and A2 | `ffmpeg` `hstack`, see recipe below |
 | **B1** | Spatial failure-mode stacked bar | `docs/figures/spatial_failure_distribution.png` | Already committed |
 | **B2** | Cross-axis degradation curve | `docs/figures/cross_axis_degradation.png` | Already committed |
 | **B3** | Phase 4 3-condition stacked bar | `docs/figures/phase4_ablation_failure_distribution.png` | Already committed |
 | **C1** | Residual architecture diagram | The mermaid block in `docs/blog/2026-05-21-honest-null-residual.md` | Render to PNG via `npx @mermaid-js/mermaid-cli -i diagram.mmd -o C1.png` or screenshot from the GitHub-rendered blog post |
 | **D1** | Live dashboard interaction (10 s) | https://rubenodechua-roboeval.hf.space/ | QuickTime → File → New Screen Recording → "Record Selected Portion" → drag a 1280×720 region over the browser → click through filters for 10 s |
+
+> **A1, A2, A3 were dropped.** The eval harness never logged or rendered rollout video, so there's no nominal-success or +5 cm-failure clip to pull. Beat 1 now opens on B1 (zoomed +5 cm column) instead of a side-by-side picture-in-picture. If you ever want the rollout footage back, add a `--record-video` flag to `roboeval evaluate` using mujoco's offscreen renderer, then re-run the nominal and +5 cm evals.
 
 ---
 
@@ -130,110 +132,6 @@ cd ~/Desktop/roboeval-demo-assets
 brew install ffmpeg          # ~3 min on first install
 ffmpeg -version | head -1    # sanity check
 ```
-
-W&B entity for every run URL below: **`rdechua-university-of-san-francisco`**.
-
----
-
-### A1 — Nominal successful rollout (target output: `A1_raw.mp4`, ~8 s)
-
-**Source:** W&B run `auchm66k` (ACT, nominal cell).
-
-1. Open <https://wandb.ai/rdechua-university-of-san-francisco/roboeval/runs/auchm66k>
-   in a browser while signed in to W&B.
-2. Click the **Media** tab (left sidebar; the panel icon with a filmstrip).
-3. Find the panel titled `eval/videos` (or `rollouts/video`, whichever variant
-   was logged for this run). Each tile is one rollout.
-4. Use the **success filter:** sort or filter the table on the `success` metric
-   = 1. If the table view is collapsed, click the gear icon → "Show success
-   column" → sort descending. Pick any rollout where success=1.
-5. Hover the chosen video tile → click the ⋮ menu (top-right corner of the
-   tile) → **Download video**. It saves as something like
-   `media_video_eval-videos_42_0_<hash>.mp4`.
-6. Rename and move to the asset folder:
-   ```bash
-   mv ~/Downloads/media_video_eval-videos_*.mp4 ~/Desktop/roboeval-demo-assets/A1_raw.mp4
-   ```
-7. Trim to 8 s starting from a clean frame (skip the first ~1 s if the gym
-   reset is jumpy):
-   ```bash
-   ffmpeg -ss 1 -t 8 -i A1_raw.mp4 -c copy A1.mp4
-   ```
-8. Sanity check it plays and is muted-ready (the rollout has no audio anyway):
-   ```bash
-   ffprobe A1.mp4 2>&1 | grep -E "Duration|Stream"
-   ```
-   Expect `Duration: 00:00:08.0x` and a single video stream, no audio.
-
-**Fallback if W&B media is missing:** re-render locally.
-
-```bash
-cd /Users/rubenodehcua/Desktop/roboeval
-roboeval evaluate --config configs/baseline/act_nominal.yaml --num-rollouts 5
-# Outputs land under outputs/eval/act_nominal/videos/seed*/rollout_*.mp4
-ls outputs/eval/act_nominal/videos/seed0/ | head
-cp outputs/eval/act_nominal/videos/seed0/rollout_0_success.mp4 \
-   ~/Desktop/roboeval-demo-assets/A1_raw.mp4
-# Then run the same ffmpeg -ss 1 -t 8 trim from step 7 above.
-```
-
----
-
-### A2 — +5 cm Recovery failure rollout (target output: `A2_raw.mp4`, ~8 s)
-
-**Source:** W&B run `w6k2wole` (ACT, +5 cm cell, Phase 4 condition A re-eval).
-
-1. Open <https://wandb.ai/rdechua-university-of-san-francisco/roboeval/runs/w6k2wole>.
-2. Click **Media** → find `eval/videos`.
-3. Filter for **failures:** success=0. From those, you want a **Recovery**
-   failure specifically — the gripper visibly passes _over_ the cube without
-   closing on it. Skip Approach failures (gripper never gets near) and
-   Grasp-and-drop failures (cube briefly lifts then falls).
-   - The taxonomy auto-labels are in
-     `data/taxonomy/auto_labels_w6k2wole.json` if it exists locally — you can
-     `jq '.labels[] | select(.failure_mode=="Recovery") | .rollout_idx'`
-     to get a list of rollout indices that are confirmed Recovery failures,
-     then cross-reference the video panel by index.
-4. Download the chosen tile (same ⋮ → Download video flow as A1).
-5. Rename and trim:
-   ```bash
-   mv ~/Downloads/media_video_eval-videos_*.mp4 ~/Desktop/roboeval-demo-assets/A2_raw.mp4
-   ffmpeg -ss 1 -t 8 -i A2_raw.mp4 -c copy A2.mp4
-   ```
-6. Visually verify: open `A2.mp4` in QuickTime, scrub to the moment the gripper
-   closes on empty air past the cube. That's the money frame for Beat 1.
-
-**Tip:** if the W&B run doesn't have rollout videos (this can happen on
-re-evaluation runs where logging was turned off), re-render the cell:
-
-```bash
-roboeval evaluate --config configs/baseline/act_spatial_y+5cm.yaml --num-rollouts 50
-# Filter for Recovery failures via the auto-classifier output:
-roboeval taxonomy classify outputs/eval/act_spatial_y+5cm/eval_results_*.json \
-  --out /tmp/auto_labels_a2.json
-jq '.labels[] | select(.failure_mode=="Recovery") | .rollout_idx' /tmp/auto_labels_a2.json
-# Pick one index and copy the matching video file
-```
-
----
-
-### A3 — Side-by-side composite (target output: `A3_sidebyside.mp4`)
-
-Run the ffmpeg recipe in the next section (it operates on `A1.mp4` and
-`A2.mp4` you just created). One command, ~5 s runtime:
-
-```bash
-cd ~/Desktop/roboeval-demo-assets
-ffmpeg -i A1.mp4 -i A2.mp4 -filter_complex \
-  "[0:v]scale=960:720,setsar=1[l];[1:v]scale=960:720,setsar=1[r];[l][r]hstack=inputs=2[out]" \
-  -map "[out]" -an -c:v libx264 -crf 18 -pix_fmt yuv420p A3_sidebyside.mp4
-```
-
-Open `A3_sidebyside.mp4` in QuickTime to confirm the panels are aligned
-(left = nominal, right = +5 cm). If one looks squashed, rerun with the source
-order swapped or adjust the per-input `scale=` to match aspect.
-
----
 
 ### B1, B2, B3 — Already-committed PNGs (target outputs: copies in the asset folder)
 
@@ -358,9 +256,6 @@ the first chart renders, _then_ start recording. The Space stays warm for
 After all the steps above, `~/Desktop/roboeval-demo-assets/` should contain:
 
 ```
-A1.mp4              # 8 s, nominal success
-A2.mp4              # 8 s, +5 cm Recovery failure
-A3_sidebyside.mp4   # 8 s, side-by-side composite
 B1.png              # spatial failure-mode stacked bar
 B2.png              # cross-axis degradation curve
 B3.png              # Phase 4 3-condition stacked bar
@@ -371,25 +266,6 @@ diagram.mmd         # mermaid source (optional, kept for re-render)
 
 Drag the whole folder into iMovie's Project Media library and you're ready
 for the **Recording procedure** section below.
-
----
-
-## ffmpeg recipe — A3 side-by-side composite
-
-If A1 and A2 have different lengths, trim to the shorter one first:
-
-```bash
-# Trim both to 8 seconds (match the Beat 1 budget)
-ffmpeg -ss 0 -t 8 -i A1.mp4 -c copy A1_trim.mp4
-ffmpeg -ss 0 -t 8 -i A2.mp4 -c copy A2_trim.mp4
-
-# Stack side-by-side, scale each panel to 960x720 (fills 1920x720)
-ffmpeg -i A1_trim.mp4 -i A2_trim.mp4 -filter_complex \
-  "[0:v]scale=960:720,setsar=1[l];[1:v]scale=960:720,setsar=1[r];[l][r]hstack=inputs=2[out]" \
-  -map "[out]" -an -c:v libx264 -crf 18 -pix_fmt yuv420p A3_sidebyside.mp4
-```
-
-Drop `A3_sidebyside.mp4` into iMovie as a single clip for Beat 1.
 
 ---
 
@@ -410,7 +286,7 @@ Drop `A3_sidebyside.mp4` into iMovie as a single clip for Beat 1.
 
 ### Step 2 — assemble the visuals (~60 min)
 
-1. Drag the B-roll files (A3, B1, B2, B3, C1, D1) into the iMovie project library.
+1. Drag the B-roll files (B1, B2, B3, C1, D1) into the iMovie project library.
 2. Place them on the video track aligned to the narration timestamps in this script.
 3. For static images (B1, B2, B3, C1), set the clip duration to match the beat:
    - Click the image clip → use the inspector to set duration in seconds.
@@ -473,7 +349,7 @@ Tell me the YouTube URL (or LFS commit SHA) and I'll:
 ## Total estimated effort
 
 - Recording narration: 20 min
-- Pulling W&B rollouts + ffmpeg composite: 30 min
+- Rendering C1 (mermaid → PNG) + recording D1 (dashboard click-through): 15 min
 - iMovie assembly: 60 min
 - Export + upload: 10 min
-- **Total: ~2 hr.** Front-load the narration recording — getting that clean is the slowest variable.
+- **Total: ~1 hr 45 min.** Front-load the narration recording — getting that clean is the slowest variable.
