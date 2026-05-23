@@ -115,6 +115,265 @@ Five beats, ~225 words at 2.5 words/sec. Time-stamps below assume the cuts hit �
 
 ---
 
+## Shot capture walkthrough — step by step
+
+This section expands every row of the shot list into a clickable procedure. Work
+through it top to bottom; each shot writes one file into
+`~/Desktop/roboeval-demo-assets/` so iMovie has a single drop-in folder later.
+
+Before you start:
+
+```bash
+mkdir -p ~/Desktop/roboeval-demo-assets
+cd ~/Desktop/roboeval-demo-assets
+# Install ffmpeg once if you don't have it
+brew install ffmpeg          # ~3 min on first install
+ffmpeg -version | head -1    # sanity check
+```
+
+W&B entity for every run URL below: **`rdechua-university-of-san-francisco`**.
+
+---
+
+### A1 — Nominal successful rollout (target output: `A1_raw.mp4`, ~8 s)
+
+**Source:** W&B run `auchm66k` (ACT, nominal cell).
+
+1. Open <https://wandb.ai/rdechua-university-of-san-francisco/roboeval/runs/auchm66k>
+   in a browser while signed in to W&B.
+2. Click the **Media** tab (left sidebar; the panel icon with a filmstrip).
+3. Find the panel titled `eval/videos` (or `rollouts/video`, whichever variant
+   was logged for this run). Each tile is one rollout.
+4. Use the **success filter:** sort or filter the table on the `success` metric
+   = 1. If the table view is collapsed, click the gear icon → "Show success
+   column" → sort descending. Pick any rollout where success=1.
+5. Hover the chosen video tile → click the ⋮ menu (top-right corner of the
+   tile) → **Download video**. It saves as something like
+   `media_video_eval-videos_42_0_<hash>.mp4`.
+6. Rename and move to the asset folder:
+   ```bash
+   mv ~/Downloads/media_video_eval-videos_*.mp4 ~/Desktop/roboeval-demo-assets/A1_raw.mp4
+   ```
+7. Trim to 8 s starting from a clean frame (skip the first ~1 s if the gym
+   reset is jumpy):
+   ```bash
+   ffmpeg -ss 1 -t 8 -i A1_raw.mp4 -c copy A1.mp4
+   ```
+8. Sanity check it plays and is muted-ready (the rollout has no audio anyway):
+   ```bash
+   ffprobe A1.mp4 2>&1 | grep -E "Duration|Stream"
+   ```
+   Expect `Duration: 00:00:08.0x` and a single video stream, no audio.
+
+**Fallback if W&B media is missing:** re-render locally.
+
+```bash
+cd /Users/rubenodehcua/Desktop/roboeval
+roboeval evaluate --config configs/baseline/act_nominal.yaml --num-rollouts 5
+# Outputs land under outputs/eval/act_nominal/videos/seed*/rollout_*.mp4
+ls outputs/eval/act_nominal/videos/seed0/ | head
+cp outputs/eval/act_nominal/videos/seed0/rollout_0_success.mp4 \
+   ~/Desktop/roboeval-demo-assets/A1_raw.mp4
+# Then run the same ffmpeg -ss 1 -t 8 trim from step 7 above.
+```
+
+---
+
+### A2 — +5 cm Recovery failure rollout (target output: `A2_raw.mp4`, ~8 s)
+
+**Source:** W&B run `w6k2wole` (ACT, +5 cm cell, Phase 4 condition A re-eval).
+
+1. Open <https://wandb.ai/rdechua-university-of-san-francisco/roboeval/runs/w6k2wole>.
+2. Click **Media** → find `eval/videos`.
+3. Filter for **failures:** success=0. From those, you want a **Recovery**
+   failure specifically — the gripper visibly passes _over_ the cube without
+   closing on it. Skip Approach failures (gripper never gets near) and
+   Grasp-and-drop failures (cube briefly lifts then falls).
+   - The taxonomy auto-labels are in
+     `data/taxonomy/auto_labels_w6k2wole.json` if it exists locally — you can
+     `jq '.labels[] | select(.failure_mode=="Recovery") | .rollout_idx'`
+     to get a list of rollout indices that are confirmed Recovery failures,
+     then cross-reference the video panel by index.
+4. Download the chosen tile (same ⋮ → Download video flow as A1).
+5. Rename and trim:
+   ```bash
+   mv ~/Downloads/media_video_eval-videos_*.mp4 ~/Desktop/roboeval-demo-assets/A2_raw.mp4
+   ffmpeg -ss 1 -t 8 -i A2_raw.mp4 -c copy A2.mp4
+   ```
+6. Visually verify: open `A2.mp4` in QuickTime, scrub to the moment the gripper
+   closes on empty air past the cube. That's the money frame for Beat 1.
+
+**Tip:** if the W&B run doesn't have rollout videos (this can happen on
+re-evaluation runs where logging was turned off), re-render the cell:
+
+```bash
+roboeval evaluate --config configs/baseline/act_spatial_y+5cm.yaml --num-rollouts 50
+# Filter for Recovery failures via the auto-classifier output:
+roboeval taxonomy classify outputs/eval/act_spatial_y+5cm/eval_results_*.json \
+  --out /tmp/auto_labels_a2.json
+jq '.labels[] | select(.failure_mode=="Recovery") | .rollout_idx' /tmp/auto_labels_a2.json
+# Pick one index and copy the matching video file
+```
+
+---
+
+### A3 — Side-by-side composite (target output: `A3_sidebyside.mp4`)
+
+Run the ffmpeg recipe in the next section (it operates on `A1.mp4` and
+`A2.mp4` you just created). One command, ~5 s runtime:
+
+```bash
+cd ~/Desktop/roboeval-demo-assets
+ffmpeg -i A1.mp4 -i A2.mp4 -filter_complex \
+  "[0:v]scale=960:720,setsar=1[l];[1:v]scale=960:720,setsar=1[r];[l][r]hstack=inputs=2[out]" \
+  -map "[out]" -an -c:v libx264 -crf 18 -pix_fmt yuv420p A3_sidebyside.mp4
+```
+
+Open `A3_sidebyside.mp4` in QuickTime to confirm the panels are aligned
+(left = nominal, right = +5 cm). If one looks squashed, rerun with the source
+order swapped or adjust the per-input `scale=` to match aspect.
+
+---
+
+### B1, B2, B3 — Already-committed PNGs (target outputs: copies in the asset folder)
+
+The figures are already in the repo. Copy them into the asset folder so iMovie
+sees them next to the videos:
+
+```bash
+cd /Users/rubenodehcua/Desktop/roboeval
+cp docs/figures/spatial_failure_distribution.png      ~/Desktop/roboeval-demo-assets/B1.png
+cp docs/figures/cross_axis_degradation.png            ~/Desktop/roboeval-demo-assets/B2.png
+cp docs/figures/phase4_ablation_failure_distribution.png ~/Desktop/roboeval-demo-assets/B3.png
+
+# Confirm they're 1080p-friendly (width ≥ 1280)
+for f in ~/Desktop/roboeval-demo-assets/B?.png; do
+  echo "$(basename "$f"): $(sips -g pixelWidth -g pixelHeight "$f" | tail -2 | xargs)"
+done
+```
+
+If any PNG is narrower than 1280 px, upscale with `sips` or rerender at higher
+DPI:
+
+```bash
+sips -Z 1920 ~/Desktop/roboeval-demo-assets/B1.png   # capped longest side at 1920
+```
+
+In iMovie, drop each PNG on the timeline and set the clip duration to the
+beat's budget (B1 = 8 s, B2 = 7 s, B3 = 20 s).
+
+---
+
+### C1 — Residual architecture diagram (target output: `C1.png`)
+
+**Option A — render the mermaid block to PNG (preferred; sharper).**
+
+1. Save the exact mermaid block from the blog post to a file:
+   ```bash
+   cat > ~/Desktop/roboeval-demo-assets/diagram.mmd <<'EOF'
+   flowchart LR
+       O[observation o_t] --> ACT[Frozen ACT base]
+       O --> R[Residual MLP δ_θ(o_t)]
+       ACT --> S[a_base]
+       R --> SCALE[× α = 0.05]
+       S --> SUM((+))
+       SCALE --> SUM
+       SUM --> A[a_t = a_base + α · δ_θ]
+   EOF
+   ```
+2. Render with the mermaid CLI (no global install needed; `npx` fetches on
+   demand). The first run downloads ~80 MB of Chromium; subsequent runs are
+   instant.
+   ```bash
+   cd ~/Desktop/roboeval-demo-assets
+   npx -y @mermaid-js/mermaid-cli@latest -i diagram.mmd -o C1.png \
+     --width 1920 --height 1080 --backgroundColor white
+   ```
+3. Open `C1.png` in Preview. Confirm the `α = 0.05` and `δ_θ(o_t)` labels are
+   crisp (the script highlights them at 0:30).
+
+**Option B — screenshot from the GitHub-rendered blog post (faster, lower DPI).**
+
+1. Open
+   <https://github.com/RDechua/roboeval/blob/main/docs/blog/2026-05-21-honest-null-residual.md>
+   in Safari or Chrome.
+2. Scroll to the **§5 Hypothesis** section — the mermaid diagram renders
+   inline there.
+3. Zoom the page to 200 % (`⌘ +` twice) so the screenshot will be ≥ 1080 px tall.
+4. `⌘ + Shift + 4`, drag a rectangle around the diagram. macOS saves it to
+   the Desktop as `Screen Shot YYYY-MM-DD at HH.MM.SS.png`.
+5. Move and rename:
+   ```bash
+   mv "$HOME/Desktop/Screen Shot"*.png ~/Desktop/roboeval-demo-assets/C1.png
+   ```
+
+---
+
+### D1 — Live dashboard interaction recording (target output: `D1.mov`, ~10 s)
+
+1. Open the live dashboard in Chrome or Safari:
+   <https://rubenodechua-roboeval.hf.space/>
+   (Wait for the spinner to clear — first hit can cold-start the Space, ~5 s.)
+2. Resize the browser window to roughly 1280×720. The fastest way: press
+   `⌥ ⇧ ⌘ R` in Safari to reset zoom, then drag the window corner until the
+   address-bar URL looks centred over a ~1280-px wide viewport. (You can also
+   use a free utility like Rectangle to snap exact sizes.)
+3. Open QuickTime Player → **File → New Screen Recording**. macOS opens the
+   screenshot toolbar.
+4. In the toolbar choose **Record Selected Portion** (third icon from the
+   left). Drag a rectangle over the browser viewport — aim for the visible
+   chart area, exclude the address bar and OS chrome.
+5. Click **Options → Microphone: None** (you'll narrate separately in Step 1
+   of the recording procedure). Click **Record**.
+6. Perform this click-through in 10 seconds, smoothly:
+   1. **t = 0 s:** the page is loaded showing the cross-axis degradation
+      curve.
+   2. **t = 2 s:** click the **Axis filter** dropdown → switch from "Both"
+      to "Spatial". The right panel collapses.
+   3. **t = 4 s:** click the **+5 cm** cell selector. The failure-mode stack
+      below redraws.
+   4. **t = 6 s:** click the **Recovery** legend swatch to toggle it off,
+      then back on. Watch the stacked bars animate.
+   5. **t = 9 s:** scroll down to reveal the Phase 4 ablation panel. Pause
+      on a clear frame.
+7. Press the stop icon in the menu bar (or `⌃ ⌘ Esc`). QuickTime opens the
+   recording in a new window.
+8. Trim with `⌘ T`: drag the yellow handles to keep just the 10 s of action,
+   click **Trim**.
+9. **File → Save** → name `D1.mov` → save to `~/Desktop/roboeval-demo-assets/`.
+10. Optional: convert to `.mp4` so iMovie ingests faster:
+    ```bash
+    cd ~/Desktop/roboeval-demo-assets
+    ffmpeg -i D1.mov -c:v libx264 -crf 20 -pix_fmt yuv420p -an D1.mp4
+    ```
+
+**If the cold-start spinner steals 3 s of your take:** hit reload, wait until
+the first chart renders, _then_ start recording. The Space stays warm for
+~5 min between hits.
+
+---
+
+### Final asset folder checklist
+
+After all the steps above, `~/Desktop/roboeval-demo-assets/` should contain:
+
+```
+A1.mp4              # 8 s, nominal success
+A2.mp4              # 8 s, +5 cm Recovery failure
+A3_sidebyside.mp4   # 8 s, side-by-side composite
+B1.png              # spatial failure-mode stacked bar
+B2.png              # cross-axis degradation curve
+B3.png              # Phase 4 3-condition stacked bar
+C1.png              # residual architecture diagram
+D1.mp4              # 10 s, live dashboard interaction
+diagram.mmd         # mermaid source (optional, kept for re-render)
+```
+
+Drag the whole folder into iMovie's Project Media library and you're ready
+for the **Recording procedure** section below.
+
+---
+
 ## ffmpeg recipe — A3 side-by-side composite
 
 If A1 and A2 have different lengths, trim to the shorter one first:
