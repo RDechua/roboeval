@@ -1356,27 +1356,45 @@ npx<span class="w"> </span>-y<span class="w"> </span>@mermaid-js/mermaid-cli@lat
    chart area, exclude the address bar and OS chrome.</li>
 <li>Click <strong>Options → Microphone: None</strong> (you'll narrate separately in Step 1
    of the recording procedure). Click <strong>Record</strong>.</li>
-<li>Perform this click-through in 10 seconds, smoothly:</li>
-<li><strong>t = 0 s:</strong> the page is loaded showing the cross-axis degradation
-      curve.</li>
-<li><strong>t = 2 s:</strong> click the <strong>Axis filter</strong> dropdown → switch from "Both"
-      to "Spatial". The right panel collapses.</li>
-<li><strong>t = 4 s:</strong> click the <strong>+5 cm</strong> cell selector. The failure-mode stack
-      below redraws.</li>
-<li><strong>t = 6 s:</strong> click the <strong>Recovery</strong> legend swatch to toggle it off,
-      then back on. Watch the stacked bars animate.</li>
-<li><strong>t = 9 s:</strong> scroll down to reveal the Phase 4 ablation panel. Pause
-      on a clear frame.</li>
-<li>Press the stop icon in the menu bar (or <code>⌃ ⌘ Esc</code>). QuickTime opens the
-   recording in a new window.</li>
-<li>Trim with <code>⌘ T</code>: drag the yellow handles to keep just the 10 s of action,
-   click <strong>Trim</strong>.</li>
-<li><strong>File → Save</strong> → name <code>D1.mov</code> → save to <code>~/Desktop/roboeval-demo-assets/</code>.</li>
-<li>Optional: convert to <code>.mp4</code> so iMovie ingests faster:
+<li>Perform this 7-step click-through in 10 seconds. The sequence is
+   chosen for maximum visible state change per click (the cell dropdown
+   is the money click — it reshapes the failure-mode bar dramatically):</li>
+<li><strong>t = 0.0 s:</strong> page loaded on the Degradation curves panel ("Both"
+      axis filter, "TSR (custom)" metric — both defaults). Cursor visible
+      near the top.</li>
+<li><strong>t = 2.0 s:</strong> move cursor down to the <strong>cell dropdown</strong> (currently
+      "y+5cm"); click to open the menu.</li>
+<li><strong>t = 3.0 s:</strong> select <strong>"nominal"</strong>. The big stacked bar reshapes
+      from ~75% blue (Recovery) to ~80% green (Success). This is the
+      money frame — hold the cursor still here.</li>
+<li><strong>t = 5.0 s:</strong> click the dropdown again; select <strong>"y+5cm"</strong>. Bar
+      snaps back to blue-dominated. Viewer now reads: each cell tells a
+      different story.</li>
+<li><strong>t = 6.0 s:</strong> smooth scroll down to reveal the <strong>Phase 4 ablation</strong>
+      panel (three bars: A=base, B=sparse, C=shaped).</li>
+<li><strong>t = 8.0 s:</strong> hover the cursor over the <strong>orange slice in
+      condition B</strong> (the Approach growth). Plotly tooltip pops with the
+      count.</li>
+<li><strong>t = 9.0 → 10.0 s:</strong> hold the cursor still on the tooltip; freeze
+      frame. End on the three ablation bars + the popped tooltip.</li>
+</ol>
+<p><strong>Things to skip on camera:</strong> the "TSR (custom) / TSR (env) / TTS"
+   metric radios (changes are too subtle in &lt;2 s), the legend swatch
+   toggles (tiny click target, looks fiddly), and the "Methods &amp;
+   reproducibility" disclosure (11 lines of run IDs, unreadable in 2 s).</p>
+<p><strong>Cold-start warm-up:</strong> open the dashboard 5 min before recording so
+   HF Spaces wakes up. Reload right before pressing Record so the
+   selectors reset to default state ("Both" + "y+5cm"). The Space stays
+   alive ~5 min idle.
+7. Press the stop icon in the menu bar (or <code>⌃ ⌘ Esc</code>). QuickTime opens the
+   recording in a new window.
+8. Trim with <code>⌘ T</code>: drag the yellow handles to keep just the 10 s of action,
+   click <strong>Trim</strong>.
+9. <strong>File → Save</strong> → name <code>D1.mov</code> → save to <code>~/Desktop/roboeval-demo-assets/</code>.
+10. Optional: convert to <code>.mp4</code> so iMovie ingests faster:
     <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>~/Desktop/roboeval-demo-assets
 ffmpeg<span class="w"> </span>-i<span class="w"> </span>D1.mov<span class="w"> </span>-c:v<span class="w"> </span>libx264<span class="w"> </span>-crf<span class="w"> </span><span class="m">20</span><span class="w"> </span>-pix_fmt<span class="w"> </span>yuv420p<span class="w"> </span>-an<span class="w"> </span>D1.mp4
-</code></pre></div></li>
-</ol>
+</code></pre></div></p>
 <p><strong>If the cold-start spinner steals 3 s of your take:</strong> hit reload, wait until
 the first chart renders, <em>then</em> start recording. The Space stays warm for
 ~5 min between hits.</p>
