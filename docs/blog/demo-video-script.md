@@ -170,13 +170,13 @@ beat's budget (B1 = 8 s, B2 = 7 s, B3 = 20 s).
    ```bash
    cat > ~/Desktop/roboeval-demo-assets/diagram.mmd <<'EOF'
    flowchart LR
-       O[observation o_t] --> ACT[Frozen ACT base]
-       O --> R[Residual MLP δ_θ(o_t)]
-       ACT --> S[a_base]
-       R --> SCALE[× α = 0.05]
+       O["observation o_t"] --> ACT["Frozen ACT base"]
+       O --> R["Residual MLP δ_θ(o_t)"]
+       ACT --> S["a_base"]
+       R --> SCALE["× α = 0.05"]
        S --> SUM((+))
        SCALE --> SUM
-       SUM --> A[a_t = a_base + α · δ_θ]
+       SUM --> A["a_t = a_base + α · δ_θ"]
    EOF
    ```
 2. Render with the mermaid CLI (no global install needed; `npx` fetches on
