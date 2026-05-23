@@ -1235,13 +1235,13 @@ multi-modal and harder to attack. So: +5 cm spatial.</p>
 <!-- §5 — embeds the mermaid diagram -->
 
 <pre class="mermaid"><code>flowchart LR
-    O[observation o_t] --&gt; ACT[Frozen ACT base]
-    O --&gt; R[Residual MLP δ_θ(o_t)]
-    ACT --&gt; S[a_base]
-    R --&gt; SCALE[× α = 0.05]
+    O["observation o_t"] --&gt; ACT["Frozen ACT base"]
+    O --&gt; R["Residual MLP δ_θ(o_t)"]
+    ACT --&gt; S["a_base"]
+    R --&gt; SCALE["× α = 0.05"]
     S --&gt; SUM((+))
     SCALE --&gt; SUM
-    SUM --&gt; A[a_t = a_base + α · δ_θ]</code></pre>
+    SUM --&gt; A["a_t = a_base + α · δ_θ"]</code></pre>
 <p><em>Per-step composition: ACT's frozen action plus an MLP residual scaled
 by α = 0.05. PPO learns δ_θ to maximize the reward.</em></p>
 <p>The architecture is small on purpose. The residual is a two-layer GELU MLP

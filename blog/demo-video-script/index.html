@@ -1306,13 +1306,13 @@ beat's budget (B1 = 8 s, B2 = 7 s, B3 = 20 s).</p>
 <li>Save the exact mermaid block from the blog post to a file:
    <div class="highlight"><pre><span></span><code>cat<span class="w"> </span>&gt;<span class="w"> </span>~/Desktop/roboeval-demo-assets/diagram.mmd<span class="w"> </span><span class="s">&lt;&lt;&#39;EOF&#39;</span>
 <span class="s">flowchart LR</span>
-<span class="s">    O[observation o_t] --&gt; ACT[Frozen ACT base]</span>
-<span class="s">    O --&gt; R[Residual MLP δ_θ(o_t)]</span>
-<span class="s">    ACT --&gt; S[a_base]</span>
-<span class="s">    R --&gt; SCALE[× α = 0.05]</span>
+<span class="s">    O[&quot;observation o_t&quot;] --&gt; ACT[&quot;Frozen ACT base&quot;]</span>
+<span class="s">    O --&gt; R[&quot;Residual MLP δ_θ(o_t)&quot;]</span>
+<span class="s">    ACT --&gt; S[&quot;a_base&quot;]</span>
+<span class="s">    R --&gt; SCALE[&quot;× α = 0.05&quot;]</span>
 <span class="s">    S --&gt; SUM((+))</span>
 <span class="s">    SCALE --&gt; SUM</span>
-<span class="s">    SUM --&gt; A[a_t = a_base + α · δ_θ]</span>
+<span class="s">    SUM --&gt; A[&quot;a_t = a_base + α · δ_θ&quot;]</span>
 <span class="s">EOF</span>
 </code></pre></div></li>
 <li>Render with the mermaid CLI (no global install needed; <code>npx</code> fetches on
