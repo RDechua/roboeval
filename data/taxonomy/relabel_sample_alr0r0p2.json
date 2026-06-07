@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "auto_labels_source": "data/taxonomy/auto_labels_alr0r0p2.json",
+  "auto_labels_sha256": "e5c01d60242c9b3d16c771c4b73e0cca981c567643c467df5f5b0be7b4440a4c",
+  "run_id": "alr0r0p2",
+  "per_category_n": 5,
+  "exported_at": "2026-05-17T22:01:39.156667+00:00",
+  "unlock_at": "2026-05-24T22:01:39.156667+00:00",
+  "samples": [
+    {
+      "seed_group": 0,
+      "rollout_idx": 16,
+      "episode_seed": 16,
+      "manual_failure_mode": null
+    },
+    {
+      "seed_group": 0,
+      "rollout_idx": 49,
+      "episode_seed": 49,
+      "manual_failure_mode": null
+    },
+    {
+      "seed_group": 1,
+      "rollout_idx": 20,
+      "episode_seed": 100023,
+      "manual_failure_mode": null
+    },
+    {
+      "seed_group": 1,
+      "rollout_idx": 34,
+      "episode_seed": 100037,
+      "manual_failure_mode": null
+    },
+    {
+      "seed_group": 2,
+      "rollout_idx": 48,
+      "episode_seed": 200054,
+      "manual_failure_mode": null
+    },
+    {
+      "seed_group": 0,
+      "rollout_idx": 47,
+      "episode_seed": 47,
+      "manual_failure_mode": null
+    },
+    {
+      "seed_group": 1,
+      "rollout_idx": 40,
+      "episode_seed": 100043,
+      "manual_failure_mode": null
+    },
+    {
+      "seed_group": 0,
+      "rollout_idx": 32,
+      "episode_seed": 32,
+      "manual_failure_mode": null
+    },
+    {
+      "seed_group": 1,
+      "rollout_idx": 4,
+      "episode_seed": 100007,
+      "manual_failure_mode": null
+    },
+    {
+      "seed_group": 1,
+      "rollout_idx": 16,
+      "episode_seed": 100019,
+      "manual_failure_mode": null
+    },
+    {
+      "seed_group": 1,
+      "rollout_idx": 28,
+      "episode_seed": 100031,
+      "manual_failure_mode": null
+    },
+    {
+      "seed_group": 1,
+      "rollout_idx": 36,
+      "episode_seed": 100039,
+      "manual_failure_mode": null
+    },
+    {
+      "seed_group": 0,
+      "rollout_idx": 13,
+      "episode_seed": 13,
+      "manual_failure_mode": null
+    },
+    {
+      "seed_group": 0,
+      "rollout_idx": 48,
+      "episode_seed": 48,
+      "manual_failure_mode": null
+    },
+    {
+      "seed_group": 1,
+      "rollout_idx": 17,
+      "episode_seed": 100020,
+      "manual_failure_mode": null
+    },
+    {
+      "seed_group": 2,
+      "rollout_idx": 11,
+      "episode_seed": 200017,
+      "manual_failure_mode": null
+    },
+    {
+      "seed_group": 2,
+      "rollout_idx": 39,
+      "episode_seed": 200045,
+      "manual_failure_mode": null
+    }
+  ]
+}
