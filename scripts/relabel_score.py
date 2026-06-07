@@ -39,6 +39,8 @@ _PASS_THRESHOLD = 0.6
 
 def _load_sample(path: Path) -> dict[str, object]:
     payload = json.loads(path.read_text())
+    if not isinstance(payload, dict):
+        raise ValueError(f"{path}: expected a JSON object at the top level")
     if payload.get("schema_version") != 1:
         raise ValueError(
             f"{path}: expected schema_version 1, got "
@@ -80,6 +82,13 @@ def _check_complete(sample: dict[str, object]) -> list[dict[str, object]]:
     return samples
 
 
+def _as_int(value: object) -> int:
+    """Narrow a JSON value to a plain int (bools excluded)."""
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError(f"expected an int, got {value!r}")
+    return value
+
+
 def _auto_labels_path(sample_path: Path, run_id: str) -> Path:
     return sample_path.parent / f"auto_labels_{run_id}.json"
 
@@ -111,7 +120,7 @@ def score_one(sample_path: Path, *, now: _dt.datetime | None = None) -> float:
     auto_seq: list[str] = []
     missing_auto: list[tuple[int, int]] = []
     for entry in complete:
-        key = (int(entry["seed_group"]), int(entry["rollout_idx"]))
+        key = (_as_int(entry["seed_group"]), _as_int(entry["rollout_idx"]))
         auto_label = auto_by_key.get(key)
         if auto_label is None:
             missing_auto.append(key)
