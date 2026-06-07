@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "auto_labels_source": "data/taxonomy/auto_labels_18xb5ob0.json",
+  "auto_labels_sha256": "080a7eb5396896a743967fa3148827438eef6d752372f3a8d6e537d679c533fd",
+  "run_id": "18xb5ob0",
+  "per_category_n": 5,
+  "exported_at": "2026-05-17T22:01:39.190593+00:00",
+  "unlock_at": "2026-05-24T22:01:39.190593+00:00",
+  "samples": [
+    {
+      "seed_group": 0,
+      "rollout_idx": 13,
+      "episode_seed": 13,
+      "manual_failure_mode": null
+    },
+    {
+      "seed_group": 0,
+      "rollout_idx": 25,
+      "episode_seed": 25,
+      "manual_failure_mode": null
+    },
+    {
+      "seed_group": 0,
+      "rollout_idx": 45,
+      "episode_seed": 45,
+      "manual_failure_mode": null
+    },
+    {
+      "seed_group": 0,
+      "rollout_idx": 46,
+      "episode_seed": 46,
+      "manual_failure_mode": null
+    },
+    {
+      "seed_group": 2,
+      "rollout_idx": 20,
+      "episode_seed": 200026,
+      "manual_failure_mode": null
+    },
+    {
+      "seed_group": 0,
+      "rollout_idx": 9,
+      "episode_seed": 9,
+      "manual_failure_mode": null
+    },
+    {
+      "seed_group": 1,
+      "rollout_idx": 14,
+      "episode_seed": 100017,
+      "manual_failure_mode": null
+    },
+    {
+      "seed_group": 1,
+      "rollout_idx": 45,
+      "episode_seed": 100048,
+      "manual_failure_mode": null
+    },
+    {
+      "seed_group": 2,
+      "rollout_idx": 13,
+      "episode_seed": 200019,
+      "manual_failure_mode": null
+    },
+    {
+      "seed_group": 2,
+      "rollout_idx": 16,
+      "episode_seed": 200022,
+      "manual_failure_mode": null
+    },
+    {
+      "seed_group": 0,
+      "rollout_idx": 23,
+      "episode_seed": 23,
+      "manual_failure_mode": null
+    },
+    {
+      "seed_group": 1,
+      "rollout_idx": 38,
+      "episode_seed": 100041,
+      "manual_failure_mode": null
+    },
+    {
+      "seed_group": 2,
+      "rollout_idx": 42,
+      "episode_seed": 200048,
+      "manual_failure_mode": null
+    },
+    {
+      "seed_group": 0,
+      "rollout_idx": 29,
+      "episode_seed": 29,
+      "manual_failure_mode": null
+    },
+    {
+      "seed_group": 2,
+      "rollout_idx": 24,
+      "episode_seed": 200030,
+      "manual_failure_mode": null
+    },
+    {
+      "seed_group": 2,
+      "rollout_idx": 25,
+      "episode_seed": 200031,
+      "manual_failure_mode": null
+    },
+    {
+      "seed_group": 2,
+      "rollout_idx": 36,
+      "episode_seed": 200042,
+      "manual_failure_mode": null
+    },
+    {
+      "seed_group": 2,
+      "rollout_idx": 39,
+      "episode_seed": 200045,
+      "manual_failure_mode": null
+    }
+  ]
+}
