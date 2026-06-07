@@ -16,7 +16,8 @@ unlock; otherwise robustness work complete.
 dashboard landed (`roboeval/dashboard/` + `analysis/dashboard/`),
 narrative single-page hero curves + per-cell failure breakdown +
 Phase 4 ablation. Deploys to HF Spaces via `analysis/dashboard/Dockerfile`.
-Demo video and arXiv-style writeup remain.
+arXiv-style writeup remains; the 90-second demo video was descoped
+2026-06-07 (PRD §3.2 non-goals, gate-failure protocol §9.2).
 
 `data/headline.json` is schema v2 — self-contained (cells + ablation +
 Welch's t blocks inline). Runtime reads one tracked file; gitignored
@@ -265,11 +266,9 @@ Phase 5 mostly shipped (2026-05-22). What's left:
 3. **MkDocs site landed** ✓ — live at https://rdechua.github.io/roboeval/.
    Lean 4-tab nav, 7 mkdocstrings submodule pages, auto-deploy via
    `.github/workflows/docs.yml`. Repo is public so Pages serves for free.
-4. **90-second demo video** — script + shot list + ffmpeg/iMovie
-   recipe shipped at `docs/blog/demo-video-script.md`. **User
-   recording on own time** (~2 hr). When YouTube URL exists, wire the
-   badge into the top-level README and the dashboard's HF Space README,
-   then close this item.
+4. **90-second demo video** — **descoped 2026-06-07** per PRD §9.2
+   gate-failure protocol; recorded in PRD §3.2 non-goals. Script doc
+   and capture assets removed from the repo.
 5. **κ relabel for G3** — script + Sunday runbook shipped at
    `scripts/relabel_score.py` (4 unit tests) and
    `docs/kappa-relabel-runbook.md`. **Embargo unlocks 2026-05-24T22:01:39

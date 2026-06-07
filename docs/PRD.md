@@ -19,7 +19,7 @@ RoboEval closes that gap. The project delivers:
 - **A robustness suite** that quantifies policy degradation under distribution shift, physical perturbation, and visual noise
 - **A failure taxonomy** with six operationally-defined categories, a classifier, and per-policy breakdown
 - **A residual RL study** showing whether PPO-based fine-tuning can recover the highest-frequency failure mode
-- **A public deliverables package** including an interactive dashboard, demo video, MkDocs site, and arXiv-style writeup
+- **A public deliverables package** including an interactive dashboard, MkDocs site, and arXiv-style writeup
 
 **Why this project for Rubeno specifically.** Rubeno spent 8+ months at Physical Intelligence evaluating real robot policies, identifying failure modes, and documenting instructional frameworks — this project is a public, reproducible extension of that exact workflow. It fills the gap between industry experience and open-source portfolio signal that robot learning hiring teams need to see.
 
@@ -55,7 +55,7 @@ RoboEval is designed to fill all three gaps simultaneously and produce artifacts
 2. Benchmark Policy A (`lerobot/act_aloha_sim_transfer_cube_human`) from the LeRobot model zoo under baseline and perturbed conditions. Build the harness as policy-agnostic so additional policies (e.g. a community-trained Diffusion Policy) can be added in v1.1 via a single config flag.
 3. Define, operationalise, and classify at least 6 failure mode categories across ≥150 labelled rollouts.
 4. Train a residual PPO policy on top of the highest-frequency failure mode and report ΔTSR (task success rate improvement) with ablations.
-5. Produce a public demo video, interactive Plotly/Dash dashboard, arXiv-style PDF writeup, and MkDocs documentation site.
+5. Produce a public interactive Plotly/Dash dashboard, arXiv-style PDF writeup, and MkDocs documentation site.
 6. Complete all of the above in 10 weeks on a part-time schedule (~15–20 hrs/week).
 
 ### 3.2 Non-Goals
@@ -69,6 +69,7 @@ The following are explicitly out of scope for v1.0 to protect timeline:
 - Comparison to proprietary models (π0, RT-2, Helix) — no public checkpoints available
 - **Cross-policy comparison in v1.0** — no sim-trained Diffusion Policy checkpoint exists publicly for ALOHA Transfer Cube (see §6.1). v1.0 is single-policy (ACT); cross-policy comparison and the multi-policy perturbation grid are deferred to v1.1 as a stretch goal contingent on training Diffusion Policy from scratch on Colab or the appearance of a community checkpoint.
 - **Multi-policy perturbation grid** — for the same reason, the perturbation suite in §6.4 runs on ACT only in v1.0. This keeps the 10-week timeline feasible on a single M1 (see §11).
+- **90-second demo video** — descoped 2026-06-07 per the gate-failure protocol (§9.2). The dashboard, blog post, and MkDocs site already cover the communication surface; the video's marginal recruiter signal did not justify the production time. May return in v1.1.
 
 ---
 
@@ -376,7 +377,6 @@ Three conditions are reported. Each condition is run with **3 seeds × 50 rollou
 | Evaluation Harness | Pluggable harness: swap policy or env with single config change | Infra / research engineers |
 | Benchmark Report (PDF) | arXiv-style writeup: method, results, ablations, limitations | Research-leaning hiring managers |
 | Interactive Dashboard | Plotly/Dash web app: filter by policy, metric, failure mode | Product / applied ML teams |
-| Demo Video (90s) | Screen-recorded rollouts showing key failure modes + recovery delta | All recruiters — top of funnel |
 | MkDocs Site | Auto-generated API docs, hosted on GitHub Pages | Engineering due-diligence |
 | W&B Report | Public Weights & Biases run dashboard with all metrics | ML practitioners |
 
@@ -387,7 +387,6 @@ Every deliverable must pass the following before public release:
 - **GitHub repository** — zero lint errors (Ruff), zero mypy `--strict` type errors, CI passing on push, >70% test coverage on `roboeval/`, README with one-command eval instructions, MIT license file present.
 - **Writeup** — methods section reproducible from description alone; results section includes uncertainty estimates (mean ± std, N, seed count); limitations section present and honest; every figure has a caption with axis labels and units.
 - **Dashboard** — loads in <3 seconds; mobile-responsive; all plots have axis labels, units, and titles; failure-mode filter works without page reload.
-- **Demo video** — narrated; failure modes visually annotated; ≤90 seconds; 1080p minimum.
 - **MkDocs site** — all public functions documented; quickstart example runs without modification on a fresh clone.
 
 ### 9.2 Quality Gates Between Phases
@@ -400,7 +399,7 @@ A phase is not "done" — and the next phase does not start — until the gate b
 | **G2 — Baseline** | End of Phase 2 (Week 3) | Hydra-driven evaluate CLI working end-to-end; ACT mean TSR within ±5 percentage points of the model card's ~83% claim on the source task; σ < 7% across 3 seeds × 50 rollouts; harness loads any LeRobot policy through a single config flag (policy-agnostic protocol). |
 | **G3 — Robustness & Taxonomy** | End of Phase 3 (Week 5) | Perturbation TSR table complete for ACT across all 4 axes; ≥150 rollouts auto-labelled; classifier validated via blinded relabel with Cohen's κ > 0.6; all 6 categories populated with ≥20 examples; `needs_review` bucket reported. |
 | **G4 — Residual RL** | End of Phase 4 (Week 7) | PPO residual training curves visible in W&B; ablation table complete with all 3 conditions × 3 seeds × 50 rollouts; ΔTSR reported with t-test significance; honest write-up of null result if not >10%. |
-| **G5 — Communication** | End of Phase 5 (Week 8) | Plotly/Dash dashboard deployed at a public URL; 90-second demo video uploaded; blog post draft circulated for review. |
+| **G5 — Communication** | End of Phase 5 (Week 8) | Plotly/Dash dashboard deployed at a public URL; blog post draft circulated for review. |
 | **G6 — Launch** | End of Phase 6 (Week 10) | All Definition-of-Done bullets (§10.3) true; v1.0 git tag pushed; LinkedIn/r/ML announcement posted. |
 
 **Gate failure protocol.** If a gate does not pass at the planned week, do not proceed to the next phase. Either (a) extend that phase by ≤1 week, eating buffer from Week 9–10, or (b) descope (move work to v1.1) per §3.2. Never push downstream work onto an unmet gate — that's how scope creep eats a 10-week plan.
@@ -417,7 +416,7 @@ A phase is not "done" — and the next phase does not start — until the gate b
 | 2 | Baseline Policy Evaluation | Baseline metrics on Policy A (ACT); policy-agnostic harness v1 | Weeks 2–3 |
 | 3 | Robustness & Failure Mode Study | Perturbation suite, failure taxonomy, ablation plots | Weeks 4–5 |
 | 4 | Residual RL Fine-tuning | Trained residual policy, delta metrics, ablation | Weeks 6–7 |
-| 5 | Dashboard & Writeup | Plotly dashboard, blog post draft, demo video | Week 8 |
+| 5 | Dashboard & Writeup | Plotly dashboard, blog post draft | Week 8 |
 | 6 | Polish & Launch | Peer review, README, arXiv-style PDF, public release | Weeks 9–10 |
 
 ### 10.2 Week-by-Week Schedule
@@ -433,7 +432,7 @@ Based on 15–20 focused hours per week, executable alongside part-time or full-
 | 5 | Failure Study | Failure taxonomy: label 150+ rollouts, build classifier, plot distribution | Taxonomy heatmap + per-policy breakdown (gate G3) |
 | 6 | Residual RL | PPO residual policy setup; train on top-1 failure mode in sim | Training curve visible in W&B |
 | 7 | Residual RL | Ablation: residual vs. frozen baseline; compute ΔTSR | Ablation table with ≥3 conditions (gate G4) |
-| 8 | Comms | Plotly dashboard; 90-second demo video; blog post draft | Dashboard deployed; video uploaded (gate G5) |
+| 8 | Comms | Plotly dashboard; blog post draft | Dashboard deployed; blog post drafted (gate G5) |
 | 9 | Polish | arXiv-style PDF; MkDocs site; peer review (1 external reader) | PDF readable start-to-finish |
 | 10 | Launch | Tag v1.0 release; post on LinkedIn + r/MachineLearning; cold outreach | 5+ GitHub stars within first week (gate G6) |
 
@@ -457,7 +456,6 @@ The project is done when all of the following are true simultaneously:
 - Residual RL ablation table shows results for all 3 conditions with ≥3 seeds
 - Dashboard is deployed and accessible via public URL
 - Blog post is published (GitHub Pages, Medium, or personal site)
-- Demo video is posted on YouTube or LinkedIn
 
 ---
 
@@ -511,7 +509,7 @@ External validation is partially outside the author's control. These targets are
 | What does sim-to-real gap mean to you? | Phase 3 perturbation study | Systematically varied physics/visual params in sim; quantified TSR degradation curves |
 | Have you worked with RL on real systems? | Physical Intelligence experience + residual RL | Evaluated physical robot policies at PI; project extends that to RL fine-tuning in sim |
 | Tell me about a failure and what you learned | Failure taxonomy section | Classified 6 failure modes; recovery rate metric; residual RL targeted the highest-frequency failure |
-| How do you communicate technical findings? | Dashboard + blog post + video | Built interactive Plotly dashboard; wrote arXiv-style report; produced 90-second demo video |
+| How do you communicate technical findings? | Dashboard + blog post | Built interactive Plotly dashboard; wrote arXiv-style report; published honest-null blog post |
 
 ---
 
