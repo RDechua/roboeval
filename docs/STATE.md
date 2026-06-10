@@ -1,4 +1,4 @@
-# RoboEval — Current State (2026-05-20, Week 6 Day 3, G4 closed)
+# RoboEval — Current State (2026-06-10, Week 9, G3 deferred to v1.1)
 
 A tight session-handoff anchor. `docs/PRD.md` is "what we're building",
 `docs/research-log.md` is "what happened week-by-week", this file is
@@ -9,8 +9,15 @@ welcome (it's a snapshot, not a journal).
 
 **Phase 4 closed**: residual RL ablation complete at +5 cm cell;
 honest null result documented in `docs/phase4_ablation.md`. Gates
-G1, G2, G4 closed. G3 carries the κ-relabel waiting on the 2026-05-24
-unlock; otherwise robustness work complete.
+G1, G2, G4 closed. **G3 deferred to v1.1** (2026-06-10): the embargo
+unlocked 2026-05-24 but the manual relabel can't run — the eval
+harness never recorded rollout video to W&B or disk, so no human can
+watch and label the sampled rollouts. Unblock = add a `--record-video`
+flag to `roboeval evaluate` (mujoco offscreen render +
+`imageio.mimsave`), re-run the ±5 cm cells, then the existing
+`scripts/relabel_score.py` pipeline runs as designed. See
+`docs/kappa-relabel-runbook.md` (now banner-marked "won't run") and
+the 2026-06-10 research-log entry.
 
 **Phase 5 (Communication) in progress**: interactive Plotly/Dash
 dashboard landed (`roboeval/dashboard/` + `analysis/dashboard/`),
@@ -160,11 +167,16 @@ docs/phase4_ablation.md                         # PRD §8.3 G4 writeup
 
 - **G1 Foundation** ✓ CI green, MPS verified, smoke runs
 - **G2 Baseline** ✓ 80% TSR within ±5 pp of model card 83%, σ=5.7% < 7%
-- **G3 Robustness & Taxonomy** ⏳ spatial 7/7 cells + temporal 3/3 cells
-  run with full classifier output; visual/dynamic not started; all 6
-  classifier rules wired + auto-labels artifact produced per eval run.
-  PRD §7.3 step 4 relabel-sample exporter live; +5cm and -5cm samples
-  exported, unlock 2026-05-24.
+- **G3 Robustness & Taxonomy** ⏸ **deferred to v1.1 (2026-06-10).**
+  Spatial 7/7 cells + temporal 3/3 cells run with full auto-classifier
+  output; all 6 classifier rules wired + auto-labels artifact produced
+  per eval run; PRD §7.3 step 4 relabel-sample exporter live; ±5 cm
+  samples exported (embargo unlocked 2026-05-24). Blocked at the
+  manual-label step: the eval harness never logged or rendered rollout
+  video (no `wandb.Video`, no `imageio`, no MP4s in `outputs/`), so no
+  human can watch the sampled rollouts to assign blind labels.
+  Unblock = add `--record-video` to `roboeval evaluate`, re-run ±5 cm,
+  then run `scripts/relabel_score.py` against the existing samples.
 - **G4 Residual RL** ✓ Closed 2026-05-20. Honest null result per
   PRD §8.3: ΔTSR = −13.3 pp (sparse), −10.7 pp (shaped) vs frozen
   base at +5 cm. Full writeup in `docs/phase4_ablation.md`. Six
@@ -269,13 +281,23 @@ Phase 5 mostly shipped (2026-05-22). What's left:
 4. **90-second demo video** — **descoped 2026-06-07** per PRD §9.2
    gate-failure protocol; recorded in PRD §3.2 non-goals. Script doc
    and capture assets removed from the repo.
-5. **κ relabel for G3** — script + Sunday runbook shipped at
-   `scripts/relabel_score.py` (4 unit tests) and
-   `docs/kappa-relabel-runbook.md`. **Embargo unlocks 2026-05-24T22:01:39
-   UTC (Sunday 3:01 PM PT).** User runs the 5-step procedure that day;
-   if κ > 0.6 on both ±5 cm samples, G3 closes. Samples already
-   exported and tracked: `data/taxonomy/relabel_sample_18xb5ob0.json`
-   (-5 cm) and `data/taxonomy/relabel_sample_alr0r0p2.json` (+5 cm).
+5. **κ relabel for G3 — deferred to v1.1 (2026-06-10).** Embargo
+   unlocked 2026-05-24 as planned, but the runbook can't execute:
+   the eval harness never recorded rollout video (no `wandb.Video`
+   calls anywhere in `roboeval/`, no MP4s on disk). The relabel
+   sample tells the labeller "watch rollout (seed_group, rollout_idx)
+   and pick a category" — there's nothing to watch. The auto-classifier
+   worked fine without video (it operates on trajectory metrics), but
+   the **manual** step the κ test requires can't proceed.
+   - **Unblock plan (v1.1, ~3-4 h):** add a `--record-video` flag to
+     `roboeval evaluate` using mujoco's offscreen renderer
+     (`render_mode="rgb_array"` + `imageio.mimsave`), re-run the ±5 cm
+     cells (~20 min each), then watch+label+score against the existing
+     samples at `data/taxonomy/relabel_sample_{18xb5ob0,alr0r0p2}.json`.
+   - **Scorer + runbook stay in the repo** as the future-proof landing
+     point. `scripts/relabel_score.py` (4 unit tests, all green) is
+     correct; `docs/kappa-relabel-runbook.md` now carries a "won't run
+     yet" banner pointing at this v1.1 plan.
 
 Dashboard implementation notes:
 
