@@ -836,4 +836,93 @@ hence Recovery dominates even more under C than under B.
   small additive corrections. Worth a re-run under the v1.1
   recommendations.
 
+---
+
+## Week 9 — 2026-06-10 (G3 deferred to v1.1: no rollout video to label)
+
+### What happened
+
+I went to close G3 today — embargo unlocked 2026-05-24 — and discovered
+the runbook can't execute. `docs/kappa-relabel-runbook.md` step 2 says
+"in the W&B run, open the per-rollout table that has the videos. For
+each row in your tick-list: find the video by `(seed_group, rollout_idx)`,
+watch it once, decide the label." There are no videos.
+
+Greped the codebase end-to-end:
+
+- `grep -rEn 'wandb\.(log|Video)|log_video|wandb_video' roboeval/ scripts/` → zero hits.
+- `grep -rEn 'render_mode|rgb_array|imageio|VideoRecorder' roboeval/ scripts/` → zero hits.
+- `find . -type f \( -name '*.mp4' -o -name '*.gif' -o -name '*.webm' -o -name '*.mov' \)` → zero hits anywhere in the working tree.
+
+W&B confirms it from its side: the two relabel runs (`18xb5ob0` for
+−5 cm, `alr0r0p2` for +5 cm) both render with the **Media** tab missing
+and the "Add panels → MEDIA → Video" rail greyed out. W&B is telling me
+"this run never logged a media key, ever."
+
+The auto-classifier never needed video — it operates on the trajectory
+metrics inside `eval_results_<run_id>.json` (action sequences,
+end-effector positions, success flags). All 38 `data/taxonomy/auto_labels_*.json`
+files are correct. The **manual** half of the κ test was the part that
+needed video, and that path was never built.
+
+### What I almost did wrong
+
+The shortest path to a closed gate would have been to open `eval_results_<run_id>.json`
+and label each sampled rollout from the trajectory numbers alone — but
+that reproduces the auto-classifier's own input, so the resulting κ
+isn't a measure of independent agreement, it's a measure of how
+faithfully I can simulate my own rules. Dishonest as a G3 close. I
+considered it for about 30 seconds and dropped it.
+
+### The decision
+
+Defer G3 to v1.1 and document the gap. PRD §7.3 stays open. The
+honest-null framing already treats Phase 4 as the centrepiece of the
+writeup; an open G3 with a clear unblock plan is consistent research
+engineering, not a hole.
+
+### v1.1 unblock plan (estimated 3–4 h)
+
+1. **Code (~1 h, the slow variable is mujoco offscreen on Apple Silicon):**
+   add a `--record-video` flag to `roboeval evaluate` (CLI subcommand
+   in `roboeval/cli.py`) that:
+   - constructs the env with `render_mode="rgb_array"`,
+   - inside the rollout loop, appends `env.render()` to a per-rollout
+     frame list,
+   - writes `outputs/eval/<config>/videos/seed<i>/rollout_<j>_<success|fail>.mp4`
+     via `imageio.mimsave(..., fps=30, codec='libx264')`.
+2. **Reruns (~40 min total):** `roboeval evaluate
+   --config configs/baseline/act_spatial_y-5cm.yaml --record-video` and
+   the matching `act_spatial_y+5cm.yaml`. 150 rollouts × 2 cells, M1.
+3. **Manual labeling (~30 min):** open `data/taxonomy/relabel_sample_18xb5ob0.json`,
+   for each of the 18 entries find the matching MP4 under
+   `outputs/eval/act_spatial_y-5cm/videos/seed<seed_group>/rollout_<rollout_idx>_*.mp4`,
+   watch, write `manual_failure_mode`. Repeat for the 17 entries in the
+   `alr0r0p2` sample.
+4. **Score (~10 s):**
+   `.venv/bin/python -m scripts.relabel_score data/taxonomy/relabel_sample_18xb5ob0.json data/taxonomy/relabel_sample_alr0r0p2.json`.
+5. **Close G3** if both κ > 0.6: update STATE.md, push.
+
+The relabel samples + scorer + runbook all stay in the repo as the
+landing point. `scripts/relabel_score.py` has 4 unit tests, all green.
+The runbook now carries a "won't run yet" banner at the top so a future
+session (mine or someone else's) sees the gap before sinking 40 minutes
+into following Step 2.
+
+### Updates landed
+
+- `docs/STATE.md` — G3 row marked deferred; "what's left" item rewritten
+  with the unblock plan.
+- `docs/research-log.md` — this entry.
+- `docs/kappa-relabel-runbook.md` — top banner: "Won't run yet."
+- Memory `project_roboeval.md` — phase status reflects G3 deferral.
+
+### Carry-forward
+
+The v1.1 backlog now leads with **add video rendering to `roboeval evaluate`**.
+It unblocks (a) the κ test for G3, (b) the demo-video shots A1/A2 that
+got dropped from the recording recipe for the same reason, and
+(c) qualitative inspection of failures in general. Highest leverage
+single code change still outstanding.
+
 

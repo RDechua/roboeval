@@ -1,10 +1,39 @@
 # κ Relabel Runbook — Closing G3 on 2026-05-24
 
-> **Status:** waiting on embargo unlock. Don't read the auto labels before
-> filling in `manual_failure_mode` — that's the whole point of the embargo
-> (PRD §7.3).
+> ## ⛔ Won't run yet (2026-06-10)
+>
+> This runbook **cannot execute as written**. Step 2 says "watch the
+> rollout video on W&B"; there are no rollout videos. The eval harness
+> never logged or rendered any (`grep -rEn 'wandb\.Video|render_mode|imageio'
+> roboeval/ scripts/` → 0 hits, and `find . -name '*.mp4'` → 0 hits).
+> W&B's Media tab is empty for both `18xb5ob0` and `alr0r0p2`.
+>
+> **G3 is deferred to v1.1.** Unblock plan (see `docs/research-log.md`
+> 2026-06-10 entry and `docs/STATE.md` "what's left" item 5):
+>
+> 1. Add a `--record-video` flag to `roboeval evaluate` that uses
+>    mujoco's offscreen renderer (`render_mode="rgb_array"`) + `imageio.mimsave`
+>    to write per-rollout MP4s under
+>    `outputs/eval/<config>/videos/seed<i>/rollout_<j>_<success|fail>.mp4`.
+> 2. Re-run the ±5 cm cells:
+>    `roboeval evaluate --config configs/baseline/act_spatial_y-5cm.yaml --record-video`
+>    and the matching `act_spatial_y+5cm.yaml` (~20 min each on M1).
+> 3. Then everything below works as written. The relabel samples at
+>    `data/taxonomy/relabel_sample_{18xb5ob0,alr0r0p2}.json` are still
+>    valid; the scorer at `scripts/relabel_score.py` is unchanged
+>    (4 unit tests, all green).
+>
+> Total v1.1 effort: ~3–4 h including labelling. Everything below this
+> banner is the procedure to follow **once the videos exist** — read it
+> as a future-self instruction, not a today instruction.
 
-**Unlock at:** `2026-05-24T22:01:39 UTC` ≈ Sunday **3:01 PM Pacific / 6:01 PM Eastern**.
+---
+
+> **Original status (kept for reference):** waiting on embargo unlock.
+> Don't read the auto labels before filling in `manual_failure_mode` —
+> that's the whole point of the embargo (PRD §7.3).
+
+**Unlock at:** `2026-05-24T22:01:39 UTC` ≈ Sunday **3:01 PM Pacific / 6:01 PM Eastern**. *(Embargo passed 2026-05-24; the blocker now is the missing video, not the date.)*
 
 **Acceptance (PRD §7.3):** Cohen's κ > 0.6 across the combined 36-rollout sample.
 The scoring script enforces this.
