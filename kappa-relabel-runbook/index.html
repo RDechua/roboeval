@@ -886,6 +886,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#wont-run-yet-2026-06-10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ⛔ Won't run yet (2026-06-10)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#inputs-committed-today" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1006,11 +1017,38 @@
 
 <h1 id="relabel-runbook-closing-g3-on-2026-05-24">κ Relabel Runbook — Closing G3 on 2026-05-24<a class="headerlink" href="#relabel-runbook-closing-g3-on-2026-05-24" title="Permanent link">&para;</a></h1>
 <blockquote>
-<p><strong>Status:</strong> waiting on embargo unlock. Don't read the auto labels before
-filling in <code>manual_failure_mode</code> — that's the whole point of the embargo
-(PRD §7.3).</p>
+<h2 id="wont-run-yet-2026-06-10">⛔ Won't run yet (2026-06-10)<a class="headerlink" href="#wont-run-yet-2026-06-10" title="Permanent link">&para;</a></h2>
+<p>This runbook <strong>cannot execute as written</strong>. Step 2 says "watch the
+rollout video on W&amp;B"; there are no rollout videos. The eval harness
+never logged or rendered any (<code>grep -rEn 'wandb\.Video|render_mode|imageio'
+roboeval/ scripts/</code> → 0 hits, and <code>find . -name '*.mp4'</code> → 0 hits).
+W&amp;B's Media tab is empty for both <code>18xb5ob0</code> and <code>alr0r0p2</code>.</p>
+<p><strong>G3 is deferred to v1.1.</strong> Unblock plan (see <code>docs/research-log.md</code>
+2026-06-10 entry and <code>docs/STATE.md</code> "what's left" item 5):</p>
+<ol>
+<li>Add a <code>--record-video</code> flag to <code>roboeval evaluate</code> that uses
+   mujoco's offscreen renderer (<code>render_mode="rgb_array"</code>) + <code>imageio.mimsave</code>
+   to write per-rollout MP4s under
+   <code>outputs/eval/&lt;config&gt;/videos/seed&lt;i&gt;/rollout_&lt;j&gt;_&lt;success|fail&gt;.mp4</code>.</li>
+<li>Re-run the ±5 cm cells:
+   <code>roboeval evaluate --config configs/baseline/act_spatial_y-5cm.yaml --record-video</code>
+   and the matching <code>act_spatial_y+5cm.yaml</code> (~20 min each on M1).</li>
+<li>Then everything below works as written. The relabel samples at
+   <code>data/taxonomy/relabel_sample_{18xb5ob0,alr0r0p2}.json</code> are still
+   valid; the scorer at <code>scripts/relabel_score.py</code> is unchanged
+   (4 unit tests, all green).</li>
+</ol>
+<p>Total v1.1 effort: ~3–4 h including labelling. Everything below this
+banner is the procedure to follow <strong>once the videos exist</strong> — read it
+as a future-self instruction, not a today instruction.</p>
 </blockquote>
-<p><strong>Unlock at:</strong> <code>2026-05-24T22:01:39 UTC</code> ≈ Sunday <strong>3:01 PM Pacific / 6:01 PM Eastern</strong>.</p>
+<hr />
+<blockquote>
+<p><strong>Original status (kept for reference):</strong> waiting on embargo unlock.
+Don't read the auto labels before filling in <code>manual_failure_mode</code> —
+that's the whole point of the embargo (PRD §7.3).</p>
+</blockquote>
+<p><strong>Unlock at:</strong> <code>2026-05-24T22:01:39 UTC</code> ≈ Sunday <strong>3:01 PM Pacific / 6:01 PM Eastern</strong>. <em>(Embargo passed 2026-05-24; the blocker now is the missing video, not the date.)</em></p>
 <p><strong>Acceptance (PRD §7.3):</strong> Cohen's κ &gt; 0.6 across the combined 36-rollout sample.
 The scoring script enforces this.</p>
 <hr />

@@ -2,58 +2,54 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://rdechua.github.io/roboeval/</loc>
-         <lastmod>2026-05-23</lastmod>
+         <lastmod>2026-06-10</lastmod>
     </url>
     <url>
          <loc>https://rdechua.github.io/roboeval/PRD/</loc>
-         <lastmod>2026-05-23</lastmod>
+         <lastmod>2026-06-10</lastmod>
     </url>
     <url>
          <loc>https://rdechua.github.io/roboeval/getting-started/</loc>
-         <lastmod>2026-05-23</lastmod>
+         <lastmod>2026-06-10</lastmod>
     </url>
     <url>
          <loc>https://rdechua.github.io/roboeval/kappa-relabel-runbook/</loc>
-         <lastmod>2026-05-23</lastmod>
+         <lastmod>2026-06-10</lastmod>
     </url>
     <url>
          <loc>https://rdechua.github.io/roboeval/blog/2026-05-21-honest-null-residual/</loc>
-         <lastmod>2026-05-23</lastmod>
-    </url>
-    <url>
-         <loc>https://rdechua.github.io/roboeval/blog/demo-video-script/</loc>
-         <lastmod>2026-05-23</lastmod>
+         <lastmod>2026-06-10</lastmod>
     </url>
     <url>
          <loc>https://rdechua.github.io/roboeval/reference/</loc>
-         <lastmod>2026-05-23</lastmod>
+         <lastmod>2026-06-10</lastmod>
     </url>
     <url>
          <loc>https://rdechua.github.io/roboeval/reference/cli/</loc>
-         <lastmod>2026-05-23</lastmod>
+         <lastmod>2026-06-10</lastmod>
     </url>
     <url>
          <loc>https://rdechua.github.io/roboeval/reference/dashboard/</loc>
-         <lastmod>2026-05-23</lastmod>
+         <lastmod>2026-06-10</lastmod>
     </url>
     <url>
          <loc>https://rdechua.github.io/roboeval/reference/envs/</loc>
-         <lastmod>2026-05-23</lastmod>
+         <lastmod>2026-06-10</lastmod>
     </url>
     <url>
          <loc>https://rdechua.github.io/roboeval/reference/evaluation/</loc>
-         <lastmod>2026-05-23</lastmod>
+         <lastmod>2026-06-10</lastmod>
     </url>
     <url>
          <loc>https://rdechua.github.io/roboeval/reference/policies/</loc>
-         <lastmod>2026-05-23</lastmod>
+         <lastmod>2026-06-10</lastmod>
     </url>
     <url>
          <loc>https://rdechua.github.io/roboeval/reference/residual/</loc>
-         <lastmod>2026-05-23</lastmod>
+         <lastmod>2026-06-10</lastmod>
     </url>
     <url>
          <loc>https://rdechua.github.io/roboeval/reference/taxonomy/</loc>
-         <lastmod>2026-05-23</lastmod>
+         <lastmod>2026-06-10</lastmod>
     </url>
 </urlset>

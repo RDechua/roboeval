@@ -2159,7 +2159,7 @@
 <li><strong>A robustness suite</strong> that quantifies policy degradation under distribution shift, physical perturbation, and visual noise</li>
 <li><strong>A failure taxonomy</strong> with six operationally-defined categories, a classifier, and per-policy breakdown</li>
 <li><strong>A residual RL study</strong> showing whether PPO-based fine-tuning can recover the highest-frequency failure mode</li>
-<li><strong>A public deliverables package</strong> including an interactive dashboard, demo video, MkDocs site, and arXiv-style writeup</li>
+<li><strong>A public deliverables package</strong> including an interactive dashboard, MkDocs site, and arXiv-style writeup</li>
 </ul>
 <p><strong>Why this project for Rubeno specifically.</strong> Rubeno spent 8+ months at Physical Intelligence evaluating real robot policies, identifying failure modes, and documenting instructional frameworks — this project is a public, reproducible extension of that exact workflow. It fills the gap between industry experience and open-source portfolio signal that robot learning hiring teams need to see.</p>
 <hr />
@@ -2187,7 +2187,7 @@
 <li>Benchmark Policy A (<code>lerobot/act_aloha_sim_transfer_cube_human</code>) from the LeRobot model zoo under baseline and perturbed conditions. Build the harness as policy-agnostic so additional policies (e.g. a community-trained Diffusion Policy) can be added in v1.1 via a single config flag.</li>
 <li>Define, operationalise, and classify at least 6 failure mode categories across ≥150 labelled rollouts.</li>
 <li>Train a residual PPO policy on top of the highest-frequency failure mode and report ΔTSR (task success rate improvement) with ablations.</li>
-<li>Produce a public demo video, interactive Plotly/Dash dashboard, arXiv-style PDF writeup, and MkDocs documentation site.</li>
+<li>Produce a public interactive Plotly/Dash dashboard, arXiv-style PDF writeup, and MkDocs documentation site.</li>
 <li>Complete all of the above in 10 weeks on a part-time schedule (~15–20 hrs/week).</li>
 </ol>
 <h3 id="32-non-goals">3.2 Non-Goals<a class="headerlink" href="#32-non-goals" title="Permanent link">&para;</a></h3>
@@ -2200,6 +2200,7 @@
 <li>Comparison to proprietary models (π0, RT-2, Helix) — no public checkpoints available</li>
 <li><strong>Cross-policy comparison in v1.0</strong> — no sim-trained Diffusion Policy checkpoint exists publicly for ALOHA Transfer Cube (see §6.1). v1.0 is single-policy (ACT); cross-policy comparison and the multi-policy perturbation grid are deferred to v1.1 as a stretch goal contingent on training Diffusion Policy from scratch on Colab or the appearance of a community checkpoint.</li>
 <li><strong>Multi-policy perturbation grid</strong> — for the same reason, the perturbation suite in §6.4 runs on ACT only in v1.0. This keeps the 10-week timeline feasible on a single M1 (see §11).</li>
+<li><strong>90-second demo video</strong> — descoped 2026-06-07 per the gate-failure protocol (§9.2). The dashboard, blog post, and MkDocs site already cover the communication surface; the video's marginal recruiter signal did not justify the production time. May return in v1.1.</li>
 </ul>
 <hr />
 <h2 id="4-target-audience">4. Target Audience<a class="headerlink" href="#4-target-audience" title="Permanent link">&para;</a></h2>
@@ -2791,11 +2792,6 @@
 <td>Product / applied ML teams</td>
 </tr>
 <tr>
-<td>Demo Video (90s)</td>
-<td>Screen-recorded rollouts showing key failure modes + recovery delta</td>
-<td>All recruiters — top of funnel</td>
-</tr>
-<tr>
 <td>MkDocs Site</td>
 <td>Auto-generated API docs, hosted on GitHub Pages</td>
 <td>Engineering due-diligence</td>
@@ -2813,7 +2809,6 @@
 <li><strong>GitHub repository</strong> — zero lint errors (Ruff), zero mypy <code>--strict</code> type errors, CI passing on push, &gt;70% test coverage on <code>roboeval/</code>, README with one-command eval instructions, MIT license file present.</li>
 <li><strong>Writeup</strong> — methods section reproducible from description alone; results section includes uncertainty estimates (mean ± std, N, seed count); limitations section present and honest; every figure has a caption with axis labels and units.</li>
 <li><strong>Dashboard</strong> — loads in &lt;3 seconds; mobile-responsive; all plots have axis labels, units, and titles; failure-mode filter works without page reload.</li>
-<li><strong>Demo video</strong> — narrated; failure modes visually annotated; ≤90 seconds; 1080p minimum.</li>
 <li><strong>MkDocs site</strong> — all public functions documented; quickstart example runs without modification on a fresh clone.</li>
 </ul>
 <h3 id="92-quality-gates-between-phases">9.2 Quality Gates Between Phases<a class="headerlink" href="#92-quality-gates-between-phases" title="Permanent link">&para;</a></h3>
@@ -2850,7 +2845,7 @@
 <tr>
 <td><strong>G5 — Communication</strong></td>
 <td>End of Phase 5 (Week 8)</td>
-<td>Plotly/Dash dashboard deployed at a public URL; 90-second demo video uploaded; blog post draft circulated for review.</td>
+<td>Plotly/Dash dashboard deployed at a public URL; blog post draft circulated for review.</td>
 </tr>
 <tr>
 <td><strong>G6 — Launch</strong></td>
@@ -2900,7 +2895,7 @@
 <tr>
 <td>5</td>
 <td>Dashboard &amp; Writeup</td>
-<td>Plotly dashboard, blog post draft, demo video</td>
+<td>Plotly dashboard, blog post draft</td>
 <td>Week 8</td>
 </tr>
 <tr>
@@ -2968,8 +2963,8 @@
 <tr>
 <td>8</td>
 <td>Comms</td>
-<td>Plotly dashboard; 90-second demo video; blog post draft</td>
-<td>Dashboard deployed; video uploaded (gate G5)</td>
+<td>Plotly dashboard; blog post draft</td>
+<td>Dashboard deployed; blog post drafted (gate G5)</td>
 </tr>
 <tr>
 <td>9</td>
@@ -3002,7 +2997,6 @@
 <li>Residual RL ablation table shows results for all 3 conditions with ≥3 seeds</li>
 <li>Dashboard is deployed and accessible via public URL</li>
 <li>Blog post is published (GitHub Pages, Medium, or personal site)</li>
-<li>Demo video is posted on YouTube or LinkedIn</li>
 </ul>
 <hr />
 <h2 id="11-risks-mitigations">11. Risks &amp; Mitigations<a class="headerlink" href="#11-risks-mitigations" title="Permanent link">&para;</a></h2>
@@ -3127,8 +3121,8 @@
 </tr>
 <tr>
 <td>How do you communicate technical findings?</td>
-<td>Dashboard + blog post + video</td>
-<td>Built interactive Plotly dashboard; wrote arXiv-style report; produced 90-second demo video</td>
+<td>Dashboard + blog post</td>
+<td>Built interactive Plotly dashboard; wrote arXiv-style report; published honest-null blog post</td>
 </tr>
 </tbody>
 </table>
