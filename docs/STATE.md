@@ -104,7 +104,7 @@ failure (Recovery + Approach), harder residual-RL signal.
 
 - Python 3.11, `mypy --strict`, ruff, `lerobot==0.4.4`, MuJoCo+gym-aloha,
   Stable-Baselines3, Hydra (OmegaConf), W&B, matplotlib, Plotly+Dash.
-- **34 source files** in `roboeval/` + `scripts/`, **245 tests passing**.
+- **41 source files** in `roboeval/` + `scripts/` (34 + 7), **285 tests passing**.
 - CI: ruff + ruff-format + mypy + pytest on push/PR, CPU-only torch wheel.
 
 ## Module map
