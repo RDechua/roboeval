@@ -68,6 +68,7 @@ nav:
   - Project:
       - PRD: PRD.md
       - Getting started: getting-started.md
+      - "κ relabel runbook": kappa-relabel-runbook.md
   - API Reference:
       - Overview: reference/index.md
       - CLI: reference/cli.md
