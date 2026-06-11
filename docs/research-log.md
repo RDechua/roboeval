@@ -824,6 +824,24 @@ hence Recovery dominates even more under C than under B.
 - ⏳ κ-relabel for the +5 cm and −5 cm samples unlocks 2026-05-24
   (Sunday). Closes G3 cleanly.
 
+### Design note — learnable α deferred to v1.1 (PRD §8.2 alignment)
+
+The original PRD §8.2 design specified the mixing scalar α as a
+*learnable* parameter, co-trained with PPO and sigmoid-clipped to
+(0, 1) so the residual could never fully replace the base — a
+structural "residual is a correction, not a substitute" guarantee.
+v1.0 ships a narrower slice of that design: the compositor still
+parameterises α as `sigmoid(α_logit)` with `α_logit` an `nn.Parameter`,
+but the compositor lives in the env wrapper, **outside** SB3's
+optimised policy network, so PPO never updates it. α is therefore
+**held fixed at its initialisation (0.05) for the whole run**; the
+intended v1.0 usage is to sweep `alpha_init` across runs and report
+the best. Making α jointly trainable needs a custom SB3 policy class
+that owns the compositor and exposes α in its parameter list — the
+co-trainable-α v1.1 item below. PRD §8.2 was updated to describe the
+shipped fixed-α behaviour; this note preserves the original design
+intent so it isn't lost from the record.
+
 ### Carry-forward
 
 - **Co-trainable α** is the v1.1 priority — it'd lower-bound any

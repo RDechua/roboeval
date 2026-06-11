@@ -349,11 +349,17 @@ Residual RL trains a small correction policy on top of a frozen base policy. Rat
 
 ### 8.2 Implementation
 
-- **Base policy** — Frozen ACT checkpoint (Policy A); selected for the highest failure rate in the most targeted failure category as identified in Phase 3.
-- **Residual policy** — Small MLP, 2 hidden layers × 256 units, GELU activations. **Input:** concatenation of (current observation features from the ACT encoder, base action chunk). **Output:** same dimension as the action space (`gym-aloha` action dim = 14 for bimanual). Trained with PPO via Stable-Baselines3.
-- **Reward signal** — Sparse success reward (+1 on `is_success`, 0 otherwise) + shaped distance-to-goal term (negative L2 distance of cube COM to target receptacle), ablated separately.
-- **Training budget** — 500k environment steps. Estimated wall-clock revised in §10.2.1; final estimate to be set after Week 6 baseline.
-- **Action composition** — Final action `a = a_base + α × a_residual`, where `α` is a **learnable scalar** initialised at 0.1 with sigmoid clipping to [0, 1]. The clipping ensures the residual cannot fully replace the base.
+The v1.0 residual loop **as shipped**. (Two parts of the original design were
+deliberately narrowed for v1.0 — a co-trainable α and an ACT-encoder input —
+and are now v1.1 items; see the forward-pointer below and research-log Week 6.)
+
+- **Base policy** — Frozen ACT checkpoint (Policy A) on the +5 cm spatial cell, chosen in §6.4.2 for its deterministic, single-mode Recovery-failure signature.
+- **Residual policy** — Stable-Baselines3 PPO with an `MlpPolicy`: two 256-unit hidden layers (`net_arch=[256, 256]`, set via `policy_kwargs`), output dimension = the ALOHA bimanual action space (`gym-aloha` action dim = 14). **Input (v1.0):** a flat 35-dim privileged-state observation — `agent_pos (14) + cube_state (7) + last base action (14)` plus a reserved zero-width feature slot. The original "observation features from the ACT encoder" input is deferred to the v1.1 ACT-encoder hook, which plugs into the wrapper's `feature_extractor` slot.
+- **Reward signal** — Two arms, ablated separately: **sparse** success (+1 on `is_success`, else 0) and **shaped** (sparse + a `−0.01 × ‖cube_xy − target_xy‖` distance-to-goal term).
+- **Training budget** — 500k environment steps per arm (~7 h each on M1 MPS; measured costs in §10.2.1 and research-log Week 6).
+- **Action composition** — Final action `a = clamp(a_base + α · a_residual, −1, 1)`, where `α = sigmoid(α_logit)` is sigmoid-clipped to (0, 1) so the residual stays a correction and can never fully replace the base. In v1.0 **α is held fixed at its initialisation (0.05)**: the compositor lives outside SB3's optimised parameters, so PPO trains the residual MLP weights and the policy's action log-std (`log_std_init = −2.0`, σ ≈ 0.135) but not α itself.
+
+**v1.1 forward-pointer.** The headline v1.1 design item is a *co-trainable* α — a custom SB3 policy class that owns the compositor and exposes `α_logit` in PPO's parameter list, lower-bounding any residual ablation to "no harm" via an α → 0 collapse. Distillation-init residual weights and the ACT-encoder feature hook are the companion items (see `docs/phase4_ablation.md` and STATE.md).
 
 ### 8.3 Ablation Plan
 
