@@ -2252,22 +2252,25 @@
 <div class="highlight"><pre><span></span><code>roboeval/
 ├── configs/              # Hydra YAML configs per experiment
 │   ├── baseline/         # Nominal eval configs (one per policy)
-│   ├── perturbation/     # Robustness suite configs
-│   └── residual/         # PPO fine-tuning configs
+│   ├── perturbation/     # Robustness suite configs (spatial + temporal)
+│   └── residual/         # PPO residual fine-tuning configs
 ├── roboeval/             # Core library (typed Python)
 │   ├── envs/             # Environment wrappers (Gymnasium API)
 │   ├── policies/         # Policy loader + inference wrappers
 │   ├── evaluation/       # Rollout engine, metric collectors, logger
-│   ├── taxonomy/         # Failure mode classifier
-│   └── residual/         # Residual RL trainer (SB3 PPO)
-├── analysis/             # Notebooks + Plotly dashboard
-├── data/                 # Frozen artifacts (see §5.4)
-│   ├── calibration/      # Calibrated success-detector thresholds
-│   ├── runs/             # Per-run rollout artifacts (jsonl)
-│   └── taxonomy/         # Auto + manual labels per run
-├── docs/                 # PRD, research log, MkDocs source
+│   ├── taxonomy/         # Failure-mode classifier
+│   ├── residual/         # Residual RL trainer (SB3 PPO)
+│   └── dashboard/        # Plotly/Dash data layer (Phase 5)
+├── scripts/              # Figure, relabel, and headline-build scripts
+├── analysis/             # Plotly/Dash app (deploys to HF Spaces)
+├── data/                 # Tracked artifacts (see §5.4)
+│   ├── calibration/      # Frozen success-detector thresholds
+│   ├── taxonomy/         # Per-run labels (auto + relabel sample)
+│   └── headline.json     # Dashboard runtime data (schema v2)
+├── outputs/              # Gitignored: per-run eval + training artifacts
+├── docs/                 # PRD, research log, figures, MkDocs source
 ├── tests/                # pytest unit + integration tests
-├── .github/workflows/    # CI: lint, type-check, smoke-test
+├── .github/workflows/    # CI (lint, type-check, pytest) + docs deploy
 ├── pyproject.toml        # Ruff, mypy, dependency config
 └── README.md
 </code></pre></div>
@@ -2363,7 +2366,7 @@
 </tbody>
 </table>
 <h3 id="54-data-artifact-management">5.4 Data &amp; Artifact Management<a class="headerlink" href="#54-data-artifact-management" title="Permanent link">&para;</a></h3>
-<p>Every experiment produces artifacts on three tiers; what each is, where it lives, and how it is versioned is explicit:</p>
+<p>Every experiment produces artifacts across a few tiers; what each is, where it lives, and how it is versioned is explicit. Runtime artifacts live under the gitignored <code>outputs/</code> tree and are regeneratable; the tracked <code>data/</code> artifacts are the frozen evidence trail.</p>
 <table>
 <thead>
 <tr>
@@ -2375,44 +2378,50 @@
 </thead>
 <tbody>
 <tr>
-<td><strong>Per-rollout results</strong> (observation summary, actions, reward trace, success flags, perturbation params)</td>
-<td><code>data/runs/{run_sha}/rollouts.jsonl</code></td>
-<td>Tagged with <code>git_sha</code>, <code>wandb_run_id</code>, <code>config_hash</code></td>
-<td>Kept through v1.0; pruned to top-50 representative rollouts at v1.1</td>
+<td><strong>Per-run eval results</strong> (per-rollout summaries + aggregate TSR/TTS/σ, success flags, perturbation params)</td>
+<td><code>outputs/eval/&lt;name_prefix&gt;/eval_results_&lt;run_id&gt;.json</code> (gitignored)</td>
+<td>JSON header carries the W&amp;B <code>run_id</code>, config path, and seeds</td>
+<td>Regeneratable from W&B; not tracked</td>
 </tr>
 <tr>
 <td><strong>Aggregated run summary</strong> (TSR, TTS, σ across seeds, per-condition table)</td>
-<td>W&amp;B run + <code>data/runs/{run_sha}/summary.json</code></td>
+<td>W&amp;B run + the same <code>eval_results_&lt;run_id&gt;.json</code></td>
 <td>W&amp;B run ID is the canonical identifier</td>
 <td>Kept indefinitely (W&amp;B free tier)</td>
 </tr>
 <tr>
 <td><strong>Calibrated success-detector thresholds</strong></td>
-<td><code>data/calibration/transfer_cube_target_xy.json</code></td>
-<td>Frozen; references the calibrating run_sha</td>
+<td><code>data/calibration/transfer_cube_target_xy.json</code> (tracked)</td>
+<td>Frozen; references the calibrating run</td>
 <td>Kept indefinitely</td>
 </tr>
 <tr>
 <td><strong>Taxonomy labels</strong></td>
-<td><code>data/taxonomy/{auto,manual,relabel_sample}_labels_{run_sha}.json</code></td>
-<td>Frozen per run_sha; manual labels written ≥7d after auto labels (see §7.3)</td>
-<td>Kept indefinitely</td>
+<td><code>data/taxonomy/auto_labels_&lt;run_id&gt;.json</code> (gitignored) + <code>data/taxonomy/relabel_sample_&lt;run_id&gt;.json</code> (tracked; manual labels embedded, written ≥7d after auto — see §7.3)</td>
+<td>Frozen per <code>run_id</code></td>
+<td>auto: regeneratable; relabel sample: kept</td>
 </tr>
 <tr>
 <td><strong>Trained residual policies</strong></td>
-<td><code>data/residual/{run_sha}/ppo_residual.zip</code> + W&amp;B artifact</td>
-<td>W&amp;B artifact version + run_sha</td>
+<td><code>outputs/residual/&lt;cell&gt;_&lt;arm&gt;/ppo_residual.zip</code> (gitignored) + W&amp;B artifact</td>
+<td>W&amp;B artifact version + <code>run_id</code></td>
 <td>Top-3 by ΔTSR kept; rest pruned</td>
 </tr>
 <tr>
+<td><strong>Dashboard runtime data</strong></td>
+<td><code>data/headline.json</code> (tracked, schema v2)</td>
+<td>Rebuilt by <code>scripts/build_headline_json.py</code></td>
+<td>Kept; single runtime source of truth for the dashboard</td>
+</tr>
+<tr>
 <td><strong>Plots &amp; figures for writeup</strong></td>
-<td><code>analysis/figures/{topic}_{run_sha}.svg</code></td>
-<td>Regenerated from <code>analysis/notebooks/*.ipynb</code></td>
-<td>Kept; referenced in PDF &amp; MkDocs</td>
+<td><code>docs/figures/*.png</code> (tracked)</td>
+<td>Regenerated via <code>scripts/plot_*.py</code></td>
+<td>Kept; referenced in blog + MkDocs</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Reproducibility contract.</strong> Any artifact in <code>data/</code> is uniquely traceable to (a) the git SHA of the code that produced it, (b) the Hydra config hash, and (c) the W&amp;B run ID. All three are written into the artifact's JSON header. No artifact is overwritten in-place; a new run produces a new <code>run_sha</code> directory.</p>
+<p><strong>Reproducibility contract.</strong> Every persisted artifact is keyed by its W&amp;B <code>run_id</code> (e.g. <code>alr0r0p2</code>) and carries the producing config path + seeds in its JSON header, so any result traces back to (a) the eval config, (b) the seeds, and (c) the W&amp;B run. Artifacts are never overwritten in-place: a new run produces new <code>*_&lt;run_id&gt;.json</code> files.</p>
 <hr />
 <h2 id="6-evaluation-design">6. Evaluation Design<a class="headerlink" href="#6-evaluation-design" title="Permanent link">&para;</a></h2>
 <h3 id="61-policies-under-study">6.1 Policies Under Study<a class="headerlink" href="#61-policies-under-study" title="Permanent link">&para;</a></h3>
