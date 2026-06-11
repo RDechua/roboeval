@@ -7,6 +7,9 @@ dist/
 .mypy_cache/
 .ruff_cache/
 
+# Docs build
+site/
+
 # Data & runs
 wandb/
 outputs/
