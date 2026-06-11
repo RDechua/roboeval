@@ -28,7 +28,7 @@ roboeval/
 ├── configs/              # Hydra YAML configs per experiment
 │   ├── baseline/
 │   ├── perturbation/
-│   └── residual_rl/
+│   └── residual/
 ├── roboeval/             # Core typed Python library
 │   ├── envs/             # Gymnasium env wrappers
 │   ├── policies/         # LeRobot policy loaders

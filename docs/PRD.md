@@ -141,7 +141,7 @@ roboeval/
 ├── configs/              # Hydra YAML configs per experiment
 │   ├── baseline/         # Nominal eval configs (one per policy)
 │   ├── perturbation/     # Robustness suite configs
-│   └── residual_rl/      # PPO fine-tuning configs
+│   └── residual/         # PPO fine-tuning configs
 ├── roboeval/             # Core library (typed Python)
 │   ├── envs/             # Environment wrappers (Gymnasium API)
 │   ├── policies/         # Policy loader + inference wrappers
