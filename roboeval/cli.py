@@ -1,18 +1,22 @@
 """Command-line entry point for RoboEval.
 
-Week 1 ships a single subcommand, ``roboeval smoke``, which executes a
-short random-action rollout against the ``gym_aloha/AlohaTransferCube-v0``
-environment to validate the dependency stack. The done criterion for PRD
-Section 10.2 Week 1 is "first rollout renders without crash"; this CLI is
-the smallest artifact that satisfies it.
+Subcommands:
 
-The full evaluation CLI (``roboeval evaluate config=...``) lands in
-Week 2-3 when the evaluation engine is built (PRD Section 5.1).
+- ``roboeval smoke`` — short random-action rollout to validate the
+  dependency stack.
+- ``roboeval calibrate --config <path>`` — calibrate ``target_xy`` and
+  ``xy_tolerance`` from N nominal rollouts.
+- ``roboeval dashboard {build,run}`` — validate the dashboard data
+  sources or run the local Dash app on :8050.
+- ``roboeval evaluate --config <path>`` — full evaluation engine; see
+  PRD §5.1.
+- ``roboeval residual {train,evaluate,aggregate}`` — Phase 4 residual
+  RL: train a PPO residual, evaluate it, or aggregate the ablation.
 
 Heavy dependencies (``gymnasium``, ``gym_aloha``, ``torch``) are imported
-lazily inside :func:`_cmd_smoke` so that importing :mod:`roboeval.cli`
-itself never requires them — this keeps unit tests and ``mypy --strict``
-runnable in a minimal CI environment.
+lazily inside the subcommand handlers so that importing
+:mod:`roboeval.cli` itself never requires them — this keeps unit tests
+and ``mypy --strict`` runnable in a minimal CI environment.
 """
 
 from __future__ import annotations
