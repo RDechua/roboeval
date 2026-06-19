@@ -1067,17 +1067,23 @@
     <div class="doc doc-contents first">
 
         <p>Command-line entry point for RoboEval.</p>
-<p>Week 1 ships a single subcommand, <code>roboeval smoke</code>, which executes a
-short random-action rollout against the <code>gym_aloha/AlohaTransferCube-v0</code>
-environment to validate the dependency stack. The done criterion for PRD
-Section 10.2 Week 1 is "first rollout renders without crash"; this CLI is
-the smallest artifact that satisfies it.</p>
-<p>The full evaluation CLI (<code>roboeval evaluate config=...</code>) lands in
-Week 2-3 when the evaluation engine is built (PRD Section 5.1).</p>
+<p>Subcommands:</p>
+<ul>
+<li><code>roboeval smoke</code> — short random-action rollout to validate the
+  dependency stack.</li>
+<li><code>roboeval calibrate --config &lt;path&gt;</code> — calibrate <code>target_xy</code> and
+  <code>xy_tolerance</code> from N nominal rollouts.</li>
+<li><code>roboeval dashboard {build,run}</code> — validate the dashboard data
+  sources or run the local Dash app on :8050.</li>
+<li><code>roboeval evaluate --config &lt;path&gt;</code> — full evaluation engine; see
+  PRD §5.1.</li>
+<li><code>roboeval residual {train,evaluate,aggregate}</code> — Phase 4 residual
+  RL: train a PPO residual, evaluate it, or aggregate the ablation.</li>
+</ul>
 <p>Heavy dependencies (<code>gymnasium</code>, <code>gym_aloha</code>, <code>torch</code>) are imported
-lazily inside :func:<code>_cmd_smoke</code> so that importing :mod:<code>roboeval.cli</code>
-itself never requires them — this keeps unit tests and <code>mypy --strict</code>
-runnable in a minimal CI environment.</p>
+lazily inside the subcommand handlers so that importing
+:mod:<code>roboeval.cli</code> itself never requires them — this keeps unit tests
+and <code>mypy --strict</code> runnable in a minimal CI environment.</p>
 
 
 
@@ -1172,11 +1178,7 @@ runnable in a minimal CI environment.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>roboeval/cli.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1130</span>
-<span class="normal">1131</span>
-<span class="normal">1132</span>
-<span class="normal">1133</span>
-<span class="normal">1134</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1134</span>
 <span class="normal">1135</span>
 <span class="normal">1136</span>
 <span class="normal">1137</span>
@@ -1227,7 +1229,11 @@ runnable in a minimal CI environment.</p>
 <span class="normal">1182</span>
 <span class="normal">1183</span>
 <span class="normal">1184</span>
-<span class="normal">1185</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="n">argv</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="normal">1185</span>
+<span class="normal">1186</span>
+<span class="normal">1187</span>
+<span class="normal">1188</span>
+<span class="normal">1189</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="n">argv</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Run the RoboEval CLI.</span>
 
 <span class="sd">    Args:</span>
