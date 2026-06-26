@@ -1,8 +1,7 @@
 # RoboEval — Current State (2026-06-10, Week 9, G3 deferred to v1.1)
 
-A tight session-handoff anchor. `docs/PRD.md` is "what we're building",
-`docs/research-log.md` is "what happened week-by-week", this file is
-"where things stand right now". Update on every major commit; deletions
+A tight session-handoff anchor. `docs/research-log.md` is "what
+happened week-by-week", this file is "where things stand right now". Update on every major commit; deletions
 welcome (it's a snapshot, not a journal).
 
 ## Phase
@@ -29,9 +28,8 @@ arXiv-style writeup remains; the 90-second demo video was descoped
 `data/headline.json` is schema v2 — self-contained (cells + ablation +
 Welch's t blocks inline). Runtime reads one tracked file; gitignored
 auto_labels / eval_results are touched only at build time by
-`scripts/build_headline_json.py`. See
-`docs/superpowers/specs/2026-05-21-phase5-dashboard-design.md` for the
-schema-v1→v2 amendment.
+`scripts/build_headline_json.py`. The schema-v1→v2 amendment is
+recorded in the project's internal design notes.
 
 Cross-phase finding still standing: ACT's failure mode is
 policy-architecture-specific (both spatial and temporal axes produce
@@ -238,7 +236,8 @@ docs/phase4_ablation.md                         # PRD §8.3 G4 writeup
 ## Active conventions / decisions
 
 - Commit author: `Rubeno Dechua <rubenodechua123@gmail.com>`. **No
-  `Co-Authored-By` trailers; no CLAUDE.md or .claude/ tracked** (gitignored).
+  `Co-Authored-By` trailers; local agent/editor config is gitignored,
+  never tracked.**
 - All edits in remote sessions arrive as `git format-patch` files via the
   chat UI. **Safari strips dashes from filenames on download** — use
   `ls ~/Downloads | grep -i <keyword>` to find exact names.
@@ -335,8 +334,8 @@ v1.1 design backlog (deferred from Phase 4):
   because Safari truncates ~57 chars. I generate a short-named copy
   via `cp /tmp/patches/0001-foo-bar-...patch /tmp/patches/0001short.patch`.
 - **Commit author**: `Rubeno Dechua <rubenodechua123@gmail.com>`.
-  NO `Co-Authored-By: Claude` trailers anywhere. CLAUDE.md and
-  `.claude/` are gitignored.
+  NO `Co-Authored-By` trailers anywhere. Local agent/editor config is
+  gitignored, never tracked.
 - **Apply pattern**: `git am /Users/rubenodehcua/Downloads/<file> && git push origin main`.
 - **All gates must pass before commit**: ruff check, ruff format,
   mypy --strict, pytest.
