@@ -97,8 +97,7 @@ by `scripts/build_headline_json.py`.
 
 Phase 4 is closed with an honest null (the table above); Phase 5 (communication) is mostly
 shipped — dashboard, blog, and docs are live. The authoritative project state lives in
-[`docs/STATE.md`](docs/STATE.md), with the post-ship consistency audit in
-[`docs/audit-2026-06-10.md`](docs/audit-2026-06-10.md).
+[`docs/STATE.md`](docs/STATE.md).
 
 Two scope cuts, made as discipline rather than drift. The **90-second demo video** was
 **descoped** on 2026-06-07 under the PRD's gate-failure protocol (§9.2) — the dashboard,

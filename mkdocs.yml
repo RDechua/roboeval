@@ -66,7 +66,6 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Project:
-      - PRD: PRD.md
       - Getting started: getting-started.md
       - "κ relabel runbook": kappa-relabel-runbook.md
   - API Reference:
@@ -89,6 +88,7 @@ exclude_docs: |
   STATE.md
   phase4_ablation.md
   research-log.md
+  PRD.md
   audit-2026-06-10.md
   superpowers/
 

@@ -19,7 +19,6 @@ top-frequency failure — with an honest null result and a documented v1.1 fix p
 - **[Blog post](blog/2026-05-21-honest-null-residual.md)** — the honest-null writeup (~2000 words).
 - **[Getting started](getting-started.md)** — `git clone` to first rollout in five commands.
 - **[API Reference](reference/index.md)** — auto-generated from the typed `roboeval/` package.
-- **[Product spec](PRD.md)** — the requirements doc the whole project ships against.
 
 ## Stack
 

@@ -132,15 +132,6 @@ def _build_layout() -> dbc.Container:
                         "GitHub",
                         href="https://github.com/RDechua/roboeval",
                         target="_blank",
-                        className="me-3",
-                    ),
-                    html.A(
-                        "PRD",
-                        href=(
-                            "https://github.com/RDechua/roboeval/blob/"
-                            "main/docs/PRD.md"
-                        ),
-                        target="_blank",
                     ),
                 ],
                 className="mb-4",
