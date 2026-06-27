@@ -962,7 +962,7 @@ def _build_parser() -> argparse.ArgumentParser:
     """
     parser = argparse.ArgumentParser(
         prog="roboeval",
-        description="RoboEval CLI (see docs/PRD.md).",
+        description="RoboEval CLI — evaluation harness and failure-mode study.",
     )
     parser.add_argument(
         "-v",

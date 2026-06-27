@@ -1,8 +1,7 @@
 """RoboEval: evaluation harness and failure-mode study for robot learning policies.
 
-This is the top-level package for the RoboEval project. The authoritative
-specification lives in ``docs/PRD.md``; the package layout follows PRD
-Section 5.2 (Repository Structure).
+This is the top-level package for the RoboEval project. See the README for the
+project overview and live links.
 
 Subpackages:
     envs: Environment wrappers conforming to the Gymnasium API.
